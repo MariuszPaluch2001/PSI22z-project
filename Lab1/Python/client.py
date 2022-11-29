@@ -6,13 +6,16 @@ SEND_COUNT = 3
 
 
 def main(server_address: str, port: int):
-  with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-    for i in range(SEND_COUNT):
-      stream_data = b"kocham studiowac!!"
-      s.sendto(stream_data, (server_address, port))
+  try:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+      for i in range(SEND_COUNT):
+        stream_data = b"kocham studiowac!!"
+        s.sendto(stream_data, (server_address, port))
 
-      data = s.recv(SIZE)
-      print('Received data=', repr(data), " size= ", SIZE)
+        data = s.recv(SIZE)
+        print('Received data=', repr(data), " size= ", SIZE)
+  except Exception as e:
+    print(e)
 
   print('Client finished.')
 
