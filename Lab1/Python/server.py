@@ -2,13 +2,13 @@ import argparse
 import socket
 
 BUFSIZE = 100
-LOCALHOST = "127.0.0.1"
+ADDRESS = "0"
 
 def main(port: int):
-  print("Will listen on ", LOCALHOST, ":", port)
+  print("Will listen on ", ADDRESS, ":", port)
   try:
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-      s.bind((LOCALHOST, port))
+      s.bind((ADDRESS, port))
       i = 1
       
       while True:
