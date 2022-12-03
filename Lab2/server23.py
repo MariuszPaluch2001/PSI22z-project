@@ -2,7 +2,7 @@ import argparse
 import socket
 
 BUFSIZE = 128
-LOCALHOST = "127.0.0.1"
+LOCALHOST = "0"
 
 def main(port: int):
   print("Will listen on ", LOCALHOST, ":", port)
@@ -10,6 +10,7 @@ def main(port: int):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
       s.bind((LOCALHOST, port))
       s.listen(5)
+      print(f"Listening on: {LOCALHOST}:{port}")
       s.settimeout(5)
 
       while True:
