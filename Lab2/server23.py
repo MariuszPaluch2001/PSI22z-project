@@ -11,11 +11,11 @@ def main(port: int):
       s.bind((LOCALHOST, port))
       s.listen(5)
       print(f"Listening on: {LOCALHOST}:{port}")
-      s.settimeout(5)
 
       while True:
         conn, addr = s.accept()
         with conn:
+          conn.settimeout(5)
           print("Connect from: ", addr)
           while True:
             data = conn.recv(BUFSIZE)
