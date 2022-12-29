@@ -1,37 +1,39 @@
 class Stream:
-    def __init__(self,stream_id, my_address, my_port,host_address,host_port,logger) -> None:
+    def __init__(self,stream_id,logger) -> None:
         self.stream_id = stream_id
-        self.my_address = my_address
-        self.my_port = my_port
-        self.host_address = host_address
-        self.host_port = host_port
-        self.logger = logger
-        self.message_buffer = []
 
-        
+        self.logger = logger
+        self.message_buffer_in = []
+        self.message_buffer_out = []
 
     def close():
-        pass
+        ...
 
     def is_closed():
-        pass
-
-
-class ClientStream(Stream):
-    def __init__(self, stream_id, my_address, my_port, host_address, host_port, logger) -> None:
-        super().__init__(stream_id, my_address, my_port, host_address, host_port, logger)
-
+        ...
 
     def get_message(self):
-        pass
+        ...
 
     def get_all_messages(self):
-        pass
+        ...
 
+    def put_message(self, binary_stream):
+        ...
+    
+    def process_control_packets(self):
+        raise NotImplementedError()
+
+class ClientStream(Stream):
+    def __init__(self, stream_id, logger) -> None:
+        super().__init__(stream_id, logger)
+
+    def process_control_packets(self):
+        ...
 
 class ServerStream(Stream):
-    def __init__(self, stream_id, my_address, my_port, host_address, host_port, logger) -> None:
-        super().__init__(stream_id, my_address, my_port, host_address, host_port, logger)
+    def __init__(self, stream_id, logger) -> None:
+        super().__init__(stream_id, logger)
 
-    def put_message(self, message):
-        pass
+    def process_control_packets(self):
+        ...
