@@ -8,6 +8,8 @@ class Stream:
         self.logger = logger
         self.message_buffer = []
 
+        
+
     def close():
         pass
 
@@ -31,5 +33,5 @@ class ServerStream(Stream):
     def __init__(self, stream_id, my_address, my_port, host_address, host_port, logger) -> None:
         super().__init__(stream_id, my_address, my_port, host_address, host_port, logger)
 
-    def put_message(self, message)
+    def put_message(self, message):
         pass
