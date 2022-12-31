@@ -1,7 +1,7 @@
 from packets import *
 
 class Stream:
-    def __init__(self,stream_id,logger) -> None:
+    def __init__(self,stream_id,logger=None) -> None:
         self.stream_id = stream_id
 
         self.logger = logger
@@ -9,6 +9,10 @@ class Stream:
         self.message_buffer_in = []
         self.message_buffer_out = []
         self.last_message_index = 0
+        self.closed = False
+
+    def is_closed(self):
+        return self.closed
 
     def get_message(self):
         for packet in self.message_buffer_in:

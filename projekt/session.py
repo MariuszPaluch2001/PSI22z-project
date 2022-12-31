@@ -10,7 +10,7 @@ from packets import (
 )
 import random
 from typing import List
-import datetime
+from datetime import datetime
 import socket
 
 class MaximalStreamCountReached(Exception):
@@ -67,7 +67,7 @@ class Session:
         if self.is_open:
             data = self.socket.recvfrom(Session.BUFSIZE)
             binary_data = data[0]
-            return Parser.parse_packet(binary_data)
+            return self.parser.parse_packet(binary_data)
 
     def send_packets(self) -> Stream:
         self.resend_packets()
