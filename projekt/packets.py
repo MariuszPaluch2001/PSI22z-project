@@ -24,8 +24,8 @@ class Packet:
                 bin_val_str += bin(val)
 
             binary_str += str(bin_val_str)[1:]
-
-        return binary_str
+        #temporary -> change that!
+        return b''.join(ch.encode('ascii') for ch in binary_str)
 
 
 class ControlPacket(Packet):

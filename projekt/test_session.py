@@ -5,6 +5,7 @@ from stream import (
 from datetime import datetime, timedelta
 import pytest
 import time
+import threading
 
 def test_create_session():
     s = Session()
@@ -231,7 +232,22 @@ def test_create_client_session():
     cs = ClientSession()
 
 def test_connection():
-    ...
+    check = False
+    def server():
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                nonlocal check
+                s.bind(('127.0.0.1',8030))
+                data = s.recvfrom(128)
+                check = (data[0] == SessionControlPacket(1,1,'o').to_binary())
+
+    thread = threading.Thread(target=server)
+    thread.start()
+    s = ClientSession()
+    s.connect("127.0.0.1", 8031, "127.0.0.1", 8030,1)
+    assert s.is_open
+    thread.join()
+    s.close()
+    assert check
 
 def test_open_new_stream():
     class DummySocket:

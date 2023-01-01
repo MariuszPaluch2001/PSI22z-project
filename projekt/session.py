@@ -98,13 +98,14 @@ class Session:
     def get_max_stream_id(self) -> int:
         return 0 if len(self.streams) == 0 else max(stream.stream_id for stream in self.streams)
 
-
+    
 class ClientSession(Session):
     def __init__(self) -> None:
         super().__init__()
 
-    def connect(self, my_address: int, my_port: int, host_address: int, host_port: int) -> None:
-        self.session_id = random.randint(0,32767)
+    def connect(self, my_address: str, my_port: int,
+     host_address: str, host_port: int, session_id: int = random.randint(0,32767)) -> None:
+        self.session_id = session_id
         self.my_address = my_address
         self.my_port = my_port
         self.host_address = host_address
@@ -117,8 +118,9 @@ class ClientSession(Session):
             self.current_packet_number,
             'o'
         )
-        self._send_control_packet(opening_packet)
         self.is_open = True
+        self._send_control_packet(opening_packet)
+
 
     def open_new_stream(self) -> ClientStream:
         if self.stream_count() >= Session.MAX_STREAM_NUMBER:
@@ -183,7 +185,7 @@ class ServerSession(Session):
         )
         self._send_packet(confirmation_packet)
 
-    def wait_for_connection(self, my_address: int, my_port: int) -> None:
+    def wait_for_connection(self, my_address: str, my_port: int) -> None:
         self.my_address = my_address
         self.my_port = my_port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -194,6 +196,7 @@ class ServerSession(Session):
             host_info = data[1]
             packet = self.parser.parse_packet(data[0])
             if isinstance(packet, SessionControlPacket) and packet.control_type == 'o':
+                self.socket.connect(host_info)
                 self.confirm(packet.packet_number)
                 self.host_address = host_info[0]
                 self.host_port = host_info[1]
