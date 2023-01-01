@@ -14,6 +14,10 @@ class Stream:
     def is_closed(self):
         return self.closed
 
+    def close(self):
+        #weź to dokończ xD
+        self.closed = True
+
     def get_message(self):
         for packet in self.message_buffer_in:
             if type(packet) is DataPacket:
@@ -56,14 +60,14 @@ class Stream:
         raise NotImplementedError()
 
 class ClientStream(Stream):
-    def __init__(self, stream_id, logger) -> None:
+    def __init__(self, stream_id, logger=None) -> None:
         super().__init__(stream_id, logger)
 
     def process_control_packets(self):
         ...
 
 class ServerStream(Stream):
-    def __init__(self, stream_id, logger) -> None:
+    def __init__(self, stream_id, logger=None) -> None:
         super().__init__(stream_id, logger)
 
     def process_control_packets(self):

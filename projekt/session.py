@@ -12,7 +12,7 @@ import random
 from typing import List
 from datetime import datetime
 import socket
-
+#sprawdzanie id sesji??
 class MaximalStreamCountReached(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
@@ -129,8 +129,7 @@ class ClientSession(Session):
             stream_id
         )
         self._send_control_packet(stream_opening_packet)
-        #@todo change Stream init
-        return ClientStream(stream_id, None)       
+        return ClientStream(stream_id)       
     
     def receive_packets(self, packet_count=10) -> None:
         #stream control packets?
@@ -230,6 +229,7 @@ class ServerSession(Session):
                 raise InvalidPacket
 
     def get_new_streams(self) -> List[ServerStream]:
+        #co ja powyżej 8?
         #@todo ask for a new attribute!
         streams = filter(lambda x : hasattr(x, 'new'), self.get_active_streams())
         for stream in streams:
