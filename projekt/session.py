@@ -12,8 +12,8 @@ import random
 from typing import List
 from datetime import datetime
 import socket
-#sprawdzanie id sesji??
-#moze korekcja??
+#sprawdzanie id sesji i korekcja
+#może diagnostycznie - co kilkanaście sekund trzeba potwierdzenia przesyłu?
 class MaximalStreamCountReached(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
@@ -209,20 +209,18 @@ class ServerSession(Session):
                 elif packet.control_type == 's':
                     self.shutdown()
                 elif packet.control_type == 'o':
-                    #co tutaj?
-                    ...
+                    pass
             elif isinstance(packet, StreamControlPacket):
                 if packet.control_type == 'o':
-                    #kontrola 8!!!
-                    new_stream = ServerStream(packet.stream_id, None)
-                    new_stream.new = True
-                    self.streams.append(new_stream)
-                    self.confirm(packet.packet_number)
+                    if self.stream_count() < Session.MAX_STREAM_NUMBER:
+                        new_stream = ServerStream(packet.stream_id, None)
+                        new_stream.new = True
+                        self.streams.append(new_stream)
+                        self.confirm(packet.packet_number)
                 else:
                     stream = self.get_stream(packet.stream_id)
                     stream.close()
                     self.confirm(packet.packet_number)
-            #jak te confirmy?
             elif isinstance(packet, ConfirmationPacket) or isinstance(packet,RetransmissionRequestPacket):
                 stream = self.get_stream(packet.stream_id)
                 stream.message_buffer_in.append(packet)

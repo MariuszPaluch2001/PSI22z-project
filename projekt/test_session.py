@@ -257,10 +257,42 @@ def test_client_receive_packets():
     ...
 
 def test_close_client_session():
-    ...
+    class DummySocket:
+        def send(self, data): self.data = data
+        def close(self): self.closed = True
+    s = ClientSession()
+    s.streams = [ ClientStream(1)]
+    dummy = DummySocket()
+    s.socket = dummy
+    s.is_open = True
+    s.session_id = 1
+
+    s.close()
+
+    assert all(stream.is_closed() for stream in s.streams)
+    assert dummy.closed is True
+    assert dummy.data == SessionControlPacket(1,1,'c').to_binary()
+
+
+
+
 
 def test_shutdown_client_session():
-    ...
+    class DummySocket:
+        def send(self, data): self.data = data
+        def close(self): self.closed = True
+    s = ClientSession()
+    s.streams = [ ClientStream(1)]
+    dummy = DummySocket()
+    s.socket = dummy
+    s.is_open = True
+    s.session_id = 1
+
+    s.shutdown()
+
+    assert all(stream.is_closed() for stream in s.streams)
+    assert dummy.closed is True
+    assert dummy.data == SessionControlPacket(1,1,'s').to_binary()
 
 def test_create_server_session():
     ss = ServerSession()
