@@ -18,6 +18,9 @@ class Stream:
         #weź to dokończ xD
         self.closed = True
 
+    def shutdown(self):
+        self.closed = True
+
     def get_message(self):
         for packet in self.message_buffer_in:
             if type(packet) is DataPacket:

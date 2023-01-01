@@ -13,6 +13,7 @@ from typing import List
 from datetime import datetime
 import socket
 #sprawdzanie id sesji??
+#moze korekcja??
 class MaximalStreamCountReached(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
@@ -67,8 +68,9 @@ class Session:
         if self.is_open:
             data = self.socket.recvfrom(Session.BUFSIZE)
             binary_data = data[0]
-            return self.parser.parse_packet(binary_data)
-
+            #return self.parser.parse_packet(binary_data)
+            #quick fix
+            return binary_data
     def send_packets(self) -> Stream:
         self.resend_packets()
         for stream in self.get_active_streams():
@@ -133,7 +135,6 @@ class ClientSession(Session):
     
     def receive_packets(self, packet_count=10) -> None:
         #stream control packets?
-        #multiconfirm?
         for _ in range(packet_count):
             packet = self._receive_packet()
             if isinstance(packet, DataPacket)  or isinstance(packet, RetransmissionRequestPacket):
@@ -172,7 +173,6 @@ class ServerSession(Session):
         super().__init__()
 
     def confirm(self, packet_number:int) -> None:
-        #co to za znacznik?
         #confirm jest imo źle
         confirmation_packet = ConfirmationPacket(
             self.session_id,
@@ -237,14 +237,14 @@ class ServerSession(Session):
         return streams
 
 
-    def _close(self, stream_operation, close_type : str) -> None:
+    def _close(self, stream_operation) -> None:
         for stream in self.get_active_streams():
             stream_operation(stream)
         self.socket.close()
         self.is_open = False   
 
     def close(self) -> None:
-        self._do_close(lambda stream : stream.close())
+        self._close(lambda stream : stream.close())
      
     def shutdown(self) -> None:
-        self._do_close(lambda stream : stream.shutdown())
+        self._close(lambda stream : stream.shutdown())

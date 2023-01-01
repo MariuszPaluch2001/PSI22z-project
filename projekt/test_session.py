@@ -2,7 +2,7 @@ from session import *
 from stream import (
     Stream
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytest
 import time
 
@@ -118,6 +118,8 @@ def test_monkeypatched_packet_receiving():
     dummy = DummySocket()
     s.socket = dummy
     s.is_open = True
+    ret = s._receive_packet()
+    assert ret == packet.to_binary()
     #ret = s._receive_packet()
     #assert isinstance(ret, SessionControlPacket)
     #assert ret.session_id == 1
@@ -154,19 +156,35 @@ def test_monkeypatched_resend_packets():
     s.unconfirmed_packets = unconfirmed
 
     s.resend_packets()
-    parser = Parser()
+    assert dummy.data[0] == unconfirmed[0][0].to_binary()
+    assert dummy.data[1] == unconfirmed[1][0].to_binary()
     assert len(dummy.data) == 2
-    #assert parser.parse_packet(dummy.data[0]).packet_number == 2
-    #assert parser.parse_packet(dummy.data[0]).session_id == 1
     assert unconfirmed[0][1] < datetime.now()
-    #assert parser.parse_packet(dummy.data[0]).packet_number == 3
-    #assert parser.parse_packet(dummy.data[0]).session_id == 1
     assert unconfirmed[1][1] < datetime.now()
 
     
 def test_send_packets_function():
-    ...
+    class DummySocket:
+        def __init__(self): self.data = []
+        def send(self, data): self.data.append(data)
+    s = Session()
+    dummy = DummySocket()
+    s.socket = dummy
+    s.is_open = True
+    s.unconfirmed_packets = [
+        [Packet(1,2), datetime.now() - timedelta(seconds=5)],
+    ]
+    stream1 = Stream(1)
+    stream2 = Stream(2)
+    s.streams.append(stream1)
+    s.streams.append(stream2)
+    stream1.message_buffer_out.append(Packet(1,3))
 
+    s.send_packets()
+    assert len(dummy.data) == 2
+    assert dummy.data[0] == Packet(1,2).to_binary()
+    assert dummy.data[1] == Packet(1,3).to_binary()
+    
 def test_close_stream():
     s = Session()
     s.streams = [
@@ -227,12 +245,7 @@ def test_open_new_stream():
     ret = s.open_new_stream()
     assert isinstance(ret, ClientStream)
     assert len(dummy.data) == 1
-    #packet = Parser().parse_packet(dummy.data[0])
-    #assert isinstance(packet, StreamControlPacket)
-    #assert packet.session_id == 1
-    #assert packet.packet_number == 1
-    #assert packet.control_type == 'o'
-    #assert packet.stream_id == 1
+    assert StreamControlPacket(1,1,'o',1).to_binary() == dummy.data[0]
 
 def test_open_new_stream_after_max():
     s = ClientSession()
@@ -262,7 +275,29 @@ def test_get_new_streams():
     ...
 
 def test_close_server_session():
-    ...
+    class DummySocket:
+        def __init__(self): self.closed = False
+        def close(self): self.closed = True
+
+    s = ServerSession()
+    s.streams.append(ServerStream(1))
+    s.socket = DummySocket()
+    s.is_open = True
+    s.close()
+    assert s.is_open is False
+    assert s.socket.closed is True
+    assert s.streams[0].is_closed() is True
 
 def test_shutdown_server_session():
-    ...
+    class DummySocket:
+        def __init__(self): self.closed = False
+        def close(self): self.closed = True
+
+    s = ServerSession()
+    s.streams.append(ServerStream(1))
+    s.socket = DummySocket()
+    s.is_open = True
+    s.shutdown()
+    assert s.is_open is False
+    assert s.socket.closed is True
+    assert s.streams[0].is_closed() is True
