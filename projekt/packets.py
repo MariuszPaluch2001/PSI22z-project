@@ -1,4 +1,22 @@
 from datetime import datetime
+import time
+import bitstring
+
+
+def str_to_bin(val: str):
+    output = ""
+    for char in val:
+        output += "{:08b}".format(ord(char))
+    return output
+
+
+def str_to_bin_stream(string):
+    n = 8
+    chunks = [string[i:i+n] for i in range(0, len(string), n)]
+    output = ""
+    for chunk in chunks:
+        output += chr(int(chunk, base=2))
+    return bytes(output, encoding='ascii')
 
 
 class Packet:
@@ -8,24 +26,21 @@ class Packet:
         self.session_id = session_id
         self.packet_number = packet_number
 
-    def to_binary(self):
+    def to_binary(self) -> bytes:
         binary_str = ""
-
         fields_map = self.__dict__
 
         for key in fields_map.keys():
             val = fields_map[key]
-            bin_val_str = ""
 
-            if type(val) is str:
-                for char in val:
-                    bin_val_str += bin(ord(char))
+            if key == "packet_type":
+                binary_str += "{:08b}".format(val)
+            elif type(val) is str:
+                binary_str += str_to_bin(val)
             else:
-                bin_val_str += bin(val)
+                binary_str += "{:032b}".format(val)
 
-            binary_str += str(bin_val_str)[1:]
-        #temporary -> change that!
-        return b''.join(ch.encode('ascii') for ch in binary_str)
+        return str_to_bin_stream(binary_str)
 
 
 class ControlPacket(Packet):
@@ -53,14 +68,11 @@ class StreamControlPacket(ControlPacket):
         self.stream_id = stream_id
 
 
-class DataPacket(Packet):
+class RetransmissionRequestPacket(StreamControlPacket):
 
-    def __init__(self, session_id, stream_id, packet_number, data) -> None:
-        super().__init__(session_id, packet_number)
+    def __init__(self, session_id, packet_number, control_type, stream_id) -> None:
+        super().__init__(session_id, packet_number, control_type, stream_id)
         self.packet_type = 3
-        self.stream_id = stream_id
-        self.timestamp = datetime.now().isoformat()
-        self.data = data
 
 
 class ConfirmationPacket(StreamControlPacket):
@@ -71,8 +83,17 @@ class ConfirmationPacket(StreamControlPacket):
         self.data = data
 
 
-class RetransmissionRequestPacket(StreamControlPacket):
+class DataPacket(Packet):
 
-    def __init__(self, session_id, packet_number, control_type, stream_id) -> None:
-        super().__init__(session_id, packet_number, control_type, stream_id)
+    def __init__(self, session_id, stream_id, packet_number, data) -> None:
+        super().__init__(session_id, packet_number)
         self.packet_type = 5
+        self.stream_id = stream_id
+        self.timestamp = int(time.mktime(datetime.now().timetuple()))
+        self.data = data
+
+
+class ErrorPacket(Packet):
+
+    def __init__(self, session_id, packet_number) -> None:
+        super().__init__(session_id, packet_number)
