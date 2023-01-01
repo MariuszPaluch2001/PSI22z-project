@@ -272,7 +272,18 @@ def test_server_receive_packets():
     ...
 
 def test_get_new_streams():
-    ...
+    s = ServerSession()
+    s.streams = [
+        ServerStream(1),
+        ServerStream(2),
+        ServerStream(3),
+    ]
+    s.get_stream(1).new = False
+    streams = s.get_new_streams()
+    assert len(streams) == 2
+    assert all(not stream.new for stream in streams)
+    assert streams[0] is s.streams[1]
+    assert streams[1] is s.streams[2]
 
 def test_close_server_session():
     class DummySocket:

@@ -162,10 +162,10 @@ class ClientSession(Session):
         self.is_open = False   
 
     def close(self) -> None:
-        self._do_close(lambda stream : stream.close(), 'c')
+        self._close(lambda stream : stream.close(), 'c')
      
     def shutdown(self) -> None:
-        self._do_close(lambda stream : stream.shutdown(), 's')
+        self._close(lambda stream : stream.shutdown(), 's')
 
 
 class ServerSession(Session):
@@ -213,6 +213,7 @@ class ServerSession(Session):
                     ...
             elif isinstance(packet, StreamControlPacket):
                 if packet.control_type == 'o':
+                    #kontrola 8!!!
                     new_stream = ServerStream(packet.stream_id, None)
                     new_stream.new = True
                     self.streams.append(new_stream)
@@ -229,11 +230,10 @@ class ServerSession(Session):
                 raise InvalidPacket
 
     def get_new_streams(self) -> List[ServerStream]:
-        #co ja powyżej 8?
-        #@todo ask for a new attribute!
-        streams = filter(lambda x : hasattr(x, 'new'), self.get_active_streams())
+        streams = list(filter(lambda x : x.new, self.get_active_streams()))
+
         for stream in streams:
-            del stream.new
+            stream.new = False
         return streams
 
 

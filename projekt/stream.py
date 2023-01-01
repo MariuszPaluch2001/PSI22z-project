@@ -72,6 +72,7 @@ class ClientStream(Stream):
 class ServerStream(Stream):
     def __init__(self, stream_id, logger=None) -> None:
         super().__init__(stream_id, logger)
+        self.new = True
 
     def process_control_packets(self):
         ...
