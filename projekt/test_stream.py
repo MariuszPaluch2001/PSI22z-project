@@ -1,8 +1,12 @@
 from threading import Thread
 import time
 
-from stream import ClientStream, ServerStream
+from stream import Stream, ClientStream, ServerStream
 from packets import DataPacket
+
+def test_put_packet():
+    test_stream = Stream(1, 1)
+
 
 def test_simple_get_messages():
     test_stream = ClientStream(1, 1)

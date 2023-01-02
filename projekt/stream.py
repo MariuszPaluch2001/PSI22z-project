@@ -90,7 +90,8 @@ class ClientStream(Stream):
         closing_packet = StreamControlPacket(
             self.session_id,
             0,
-            closing_type
+            closing_type,
+            self.stream_id
         )
         self._put_packet(closing_packet)
         super_operation(super())
