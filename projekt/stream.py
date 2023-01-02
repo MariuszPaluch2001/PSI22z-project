@@ -56,13 +56,11 @@ class Stream:
 
     def _get_packet(self, timeout=None) -> Packet:
         if not self.closed:
-            self.mutex_in.acquire()
             try:
                 return self.message_buffer_in.get(block = True, timeout=timeout)[1]
             except Empty:
                 pass
-            finally:
-                self.mutex_in.release()
+
 
     def post(self, data):
         with self.condition:
@@ -129,7 +127,7 @@ class ClientStream(Stream):
         retransmission_packet = RetransmissionRequestPacket(
             self.session_id,
             0,
-            self.stream_id, #tutaj jest błędna dana - ona potem wyleci
+            self.stream_id,
             self.data_packet_number
         )
         self._put_packet(retransmission_packet)

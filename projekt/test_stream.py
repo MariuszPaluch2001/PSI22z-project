@@ -29,6 +29,26 @@ def test_get_packet_out_simple():
     test_stream.message_buffer_out.append((data_packet))
     assert test_stream.get_packet() == data_packet
 
+def test_mutex_in_sync():
+    test_stream = Stream(1, 1)
+    data_packet_1 = DataPacket(1,1,1, b'')
+    def writer():
+        test_stream.put_packet(data_packet_1)
+    
+    thread = Thread(target=writer)
+    thread.start()
+    assert test_stream._get_packet(1) == data_packet_1 
+
+def test_mutex_out_sync():
+    test_stream = Stream(1, 1)
+    data_packet_1 = DataPacket(1,1,1, b'')
+    def writer():
+        test_stream._put_packet(data_packet_1)
+    
+    thread = Thread(target=writer)
+    thread.start()
+    assert test_stream.get_packet() == data_packet_1 
+
 def test_simple_get_messages():
     test_stream = ClientStream(1, 1)
     
