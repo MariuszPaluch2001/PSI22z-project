@@ -489,7 +489,21 @@ def test_server_receive_invalid_packet():
 
 
 def test_server_receive_multiple_packets():
-    ... 
+    packets = [StreamControlPacket(1,1,'o',1), StreamControlPacket(1,2,'o',2)]
+    class DummySocket:
+        def recvfrom(self, idk): return (packets.pop(0).to_binary(), None)
+        def send(self, data): pass
+    s = ServerSession()
+    dummy = DummySocket()
+    s.socket = dummy
+    s.is_open = True
+    s.session_id = 1
+    s.receive_packets(2)
+    assert len(s.streams) == 2
+    assert s.streams[0].new is True
+    assert s.streams[1].new is True
+    assert s.streams[0].stream_id == 1
+    assert s.streams[1].stream_id == 2
 
 
 def test_get_new_streams():
