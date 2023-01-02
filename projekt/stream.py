@@ -1,5 +1,5 @@
 import queue
-from multiprocessing import Process, Condition
+from threading import Thread, Condition
 from packets import *
 from typing import List
 
@@ -127,4 +127,4 @@ class ServerStream(Stream):
         #tutaj dzielisz na pakiety i dodajesz je do self.data_packets
         #wrzucasz je też do wysyłki
         ...
-    
+

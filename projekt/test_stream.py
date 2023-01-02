@@ -1,4 +1,4 @@
-from multiprocessing import Process, Condition
+from threading import Thread
 import time
 
 from stream import ClientStream, ServerStream
@@ -30,22 +30,41 @@ def test_missing_get_messages():
     test_stream.message_buffer_in.put((data_packet_3.packet_number, data_packet_3))
     test_stream.message_buffer_in.put((data_packet_4.packet_number, data_packet_4))
     
-    condition = Condition()
-
-    def session_simulator(condition2):
+    def session_simulator():
         time.sleep(1)
-        test_stream.message_buffer_in.put((data_packet_1.packet_number, data_packet_1))
-        with condition2:
-            condition2.notify()
-        print('end')
+        test_stream.post((data_packet_1.packet_number, data_packet_1))
     
-    test_stream.condition = condition
+    thread = Thread(target=session_simulator)
+    thread.start()
 
-    with condition:
-        worker = Process(target=session_simulator, args=(condition, ))
-        worker.start()
+    assert test_stream.get_message(10).packet_number == 1
+    assert test_stream.get_message(10).packet_number == 2
+    assert test_stream.get_message(10).packet_number == 3
+    assert test_stream.get_message(10).packet_number == 4
 
-        assert test_stream.get_message(0.001).packet_number == 1
+def test_missing_without_sleep_get_messages():
+    test_stream = ClientStream(1, 1)
+    
+    data_packet_1 = DataPacket(1,1,1, b'')
+    data_packet_2 = DataPacket(1,1,2, b'')
+    data_packet_3 = DataPacket(1,1,3, b'')
+    data_packet_4 = DataPacket(1,1,4, b'')
+    
+    test_stream.message_buffer_in.put((data_packet_2.packet_number, data_packet_2))
+    test_stream.message_buffer_in.put((data_packet_3.packet_number, data_packet_3))
+    test_stream.message_buffer_in.put((data_packet_4.packet_number, data_packet_4))
+    
+    def session_simulator():
+        time.sleep(1)
+        test_stream.post((data_packet_1.packet_number, data_packet_1))
+    
+    thread = Thread(target=session_simulator)
+    thread.start()
+
+    assert test_stream.get_message(10).packet_number == 1
+    assert test_stream.get_message(10).packet_number == 2
+    assert test_stream.get_message(10).packet_number == 3
+    assert test_stream.get_message(10).packet_number == 4
 
 def test_empty_get_all_messages():
 

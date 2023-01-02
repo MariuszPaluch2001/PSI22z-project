@@ -1,7 +1,6 @@
 from datetime import datetime
 import struct
 import time
-import bitstring
 
 from packets_exceptions import *
 
