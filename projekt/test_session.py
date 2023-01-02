@@ -19,9 +19,9 @@ def test_stream_count():
     s = Session()
     assert s.stream_count() == 0
     streams = [
-        Stream(1),
-        Stream(1),
-        Stream(1)
+        Stream(1,1),
+        Stream(1,1),
+        Stream(1,1)
     ]
     streams[0].closed = True
     s.streams.extend(streams)
@@ -33,9 +33,9 @@ def test_get_active_streams():
     active = s.get_active_streams()
     assert len(list(active)) == 0
     streams = [
-        Stream(1),
-        Stream(1),
-        Stream(1)
+        Stream(1,1),
+        Stream(1,1),
+        Stream(1,1)
     ]
     streams[0].closed = True
     s.streams.extend(streams)
@@ -46,7 +46,7 @@ def test_get_active_streams():
 
 def test_get_stream():
     s = Session()
-    stream = Stream(2)
+    stream = Stream(1,2)
     s.streams.append(stream)
     ret = s.get_stream(2)
     assert ret is stream
@@ -175,8 +175,8 @@ def test_send_packets_function():
     s.unconfirmed_packets = [
         [Packet(1,2), datetime.now() - timedelta(seconds=5)],
     ]
-    stream1 = Stream(1)
-    stream2 = Stream(2)
+    stream1 = Stream(1,1)
+    stream2 = Stream(1,2)
     s.streams.append(stream1)
     s.streams.append(stream2)
     stream1.message_buffer_out.append(Packet(1,3))
@@ -189,9 +189,9 @@ def test_send_packets_function():
 def test_close_stream():
     s = Session()
     s.streams = [
-        Stream(1),
-        Stream(2),
-        Stream(3)
+        Stream(1,1),
+        Stream(1,2),
+        Stream(1,3)
     ]
     s.close_stream(2)
     assert s.streams[1].is_closed() is True
@@ -222,9 +222,9 @@ def test_double_confirm_packet():
 def test_get_max_stream_id():
     s = Session()
     s.streams = [
-        Stream(1),
-        Stream(2),
-        Stream(3)
+        Stream(1,1),
+        Stream(1,2),
+        Stream(1,3)
     ]
     assert s.get_max_stream_id() == 3
 
@@ -265,7 +265,7 @@ def test_open_new_stream():
 
 def test_open_new_stream_after_max():
     s = ClientSession()
-    s.streams = [ClientStream(i) for i in range(1,9)]
+    s.streams = [ClientStream(1,i) for i in range(1,9)]
     with pytest.raises(MaximalStreamCountReached):
         s.open_new_stream()
 
@@ -277,7 +277,7 @@ def test_close_client_session():
         def send(self, data): self.data = data
         def close(self): self.closed = True
     s = ClientSession()
-    s.streams = [ ClientStream(1)]
+    s.streams = [ ClientStream(1,1)]
     dummy = DummySocket()
     s.socket = dummy
     s.is_open = True
@@ -298,7 +298,7 @@ def test_shutdown_client_session():
         def send(self, data): self.data = data
         def close(self): self.closed = True
     s = ClientSession()
-    s.streams = [ ClientStream(1)]
+    s.streams = [ ClientStream(1,1)]
     dummy = DummySocket()
     s.socket = dummy
     s.is_open = True
@@ -323,9 +323,9 @@ def test_server_receive_packets():
 def test_get_new_streams():
     s = ServerSession()
     s.streams = [
-        ServerStream(1),
-        ServerStream(2),
-        ServerStream(3),
+        ServerStream(1,1),
+        ServerStream(1,2),
+        ServerStream(1,3),
     ]
     s.get_stream(1).new = False
     streams = s.get_new_streams()
