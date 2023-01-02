@@ -133,21 +133,19 @@ class ClientSession(Session):
             stream_id
         )
         self._send_control_packet(stream_opening_packet)
-        return ClientStream(stream_id)       
+        stream = ClientStream(self.session_id, stream_id)  
+        self.streams.append(stream)
+        return stream      
     
     def receive_packets(self, packet_count=10) -> None:
         #stream control packets?
         for _ in range(packet_count):
             packet = self._receive_packet()
-            if isinstance(packet, DataPacket)  or isinstance(packet, RetransmissionRequestPacket):
+            if isinstance(packet, DataPacket):
                 stream = self.get_stream(packet.stream_id)
                 stream.message_buffer_in.append(packet)
             elif isinstance(packet, ConfirmationPacket):
-                if packet.stream_id == 0:
-                    self.confirm_packet(packet.packet_number)
-                else:
-                    stream = self.get_stream(packet.stream_id)
-                    stream.message_buffer_in.append(packet)
+                self.confirm_packet(packet.packet_number)
             else:
                 raise InvalidPacket
 
@@ -216,15 +214,15 @@ class ServerSession(Session):
             elif isinstance(packet, StreamControlPacket):
                 if packet.control_type == 'o':
                     if self.stream_count() < Session.MAX_STREAM_NUMBER:
-                        new_stream = ServerStream(packet.stream_id, None)
+                        new_stream = ServerStream(packet.stream_id)
                         new_stream.new = True
                         self.streams.append(new_stream)
-                        self.confirm(packet.packet_number)
                 else:
                     stream = self.get_stream(packet.stream_id)
                     stream.close()
-                    self.confirm(packet.packet_number)
-            elif isinstance(packet, ConfirmationPacket) or isinstance(packet,RetransmissionRequestPacket):
+                self.confirm(packet.packet_number)
+  
+            elif isinstance(packet,RetransmissionRequestPacket):
                 stream = self.get_stream(packet.stream_id)
                 stream.message_buffer_in.append(packet)
             else:
