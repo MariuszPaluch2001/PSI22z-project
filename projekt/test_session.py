@@ -279,13 +279,10 @@ def test_client_receive_data_packet():
     s.receive_packet()
     ret = stream._get_packet()
     assert isinstance(ret, DataPacket)
-    assert ret.session_id == 1
-    assert ret.packet_number == 1
-    assert ret.packet_number == 1
-    assert ret.data == b'abc'
+    assert ret.to_binary() == packet.to_binary()
 
 def test_client_receive_confirmation_packet():
-    packet = ConfirmationPacket(1,1,1,'a')
+    packet = ConfirmationPacket(1,1,1)
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
     s = ClientSession()
@@ -307,8 +304,8 @@ def test_client_receive_invalid_packet():
 
 def test_client_receive_multiple_packets():
     packets = [
-        ConfirmationPacket(1,1,1,'a'),
-        ConfirmationPacket(1,2,0,'a')
+        ConfirmationPacket(1,1,1),
+        ConfirmationPacket(1,2,0)
     ]
 
     class DummySocket:
@@ -492,7 +489,21 @@ def test_server_receive_invalid_packet():
 
 
 def test_server_receive_multiple_packets():
-    ... 
+    packets = [StreamControlPacket(1,1,'o',1), StreamControlPacket(1,2,'o',2)]
+    class DummySocket:
+        def recvfrom(self, idk): return (packets.pop(0).to_binary(), None)
+        def send(self, data): pass
+    s = ServerSession()
+    dummy = DummySocket()
+    s.socket = dummy
+    s.is_open = True
+    s.session_id = 1
+    s.receive_packets(2)
+    assert len(s.streams) == 2
+    assert s.streams[0].new is True
+    assert s.streams[1].new is True
+    assert s.streams[0].stream_id == 1
+    assert s.streams[1].stream_id == 2
 
 
 def test_get_new_streams():
@@ -541,4 +552,16 @@ def test_shutdown_server_session():
 
 
 def test_server_packet_confirmation():
-    ...
+    class DummySocket:
+        def send(self,data): self.data = data
+
+    s = ServerSession()
+    s.socket = DummySocket()
+    s.is_open = True
+    s.session_id = 2
+    s.confirm(2)
+    packet = Parser().parse_packet(s.socket.data)
+    assert isinstance(packet, ConfirmationPacket)
+    assert packet.session_id == s.session_id
+    assert packet.packet_number == 2
+    assert packet.stream_id == 0
