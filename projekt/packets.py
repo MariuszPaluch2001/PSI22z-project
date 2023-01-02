@@ -1,21 +1,6 @@
 from datetime import datetime
+import struct
 import time
-
-
-def str_to_bin(val: str):
-    output = ""
-    for char in val:
-        output += "{:08b}".format(ord(char))
-    return output
-
-
-def str_to_bin_stream(string):
-    n = 8
-    chunks = [string[i:i+n] for i in range(0, len(string), n)]
-    output = ""
-    for chunk in chunks:
-        output += chr(int(chunk, base=2))
-    return bytes(output, encoding='ascii')
 
 
 class Packet:
@@ -25,21 +10,37 @@ class Packet:
         self.session_id = session_id
         self.packet_number = packet_number
 
-    def to_binary(self) -> bytes:
-        binary_str = ""
+    def get_struct_fmt(self) -> str:
         fields_map = self.__dict__
+        format = "@"
 
         for key in fields_map.keys():
-            val = fields_map[key]
-
-            if key == "packet_type":
-                binary_str += "{:08b}".format(val)
-            elif type(val) is str:
-                binary_str += str_to_bin(val)
+            if key == "control_type":
+                format += "c"
+            elif key == "data":
+                format += "100s"
             else:
-                binary_str += "{:032b}".format(val)
+                format += "i"
 
-        return str_to_bin_stream(binary_str)
+        return format
+
+    @staticmethod
+    def _char_arr_to_bin(array) -> list:
+        output = []
+        for element in array:
+            if type(element) is str:
+                output.append(bytes(element, encoding='ascii'))
+            else:
+                output.append(element)
+        return output
+
+    def to_binary(self) -> bytes:
+        struct_format = self.get_struct_fmt()
+
+        fields_map = self.__dict__
+        struct_array = self._char_arr_to_bin(fields_map.values())
+
+        return struct.pack(struct_format, *struct_array)
 
 
 class ControlPacket(Packet):
@@ -67,18 +68,21 @@ class StreamControlPacket(ControlPacket):
         self.stream_id = stream_id
 
 
-class RetransmissionRequestPacket(StreamControlPacket):
+class RetransmissionRequestPacket(Packet):
 
-    def __init__(self, session_id, packet_number, control_type, stream_id) -> None:
-        super().__init__(session_id, packet_number, control_type, stream_id)
+    def __init__(self, session_id, packet_number, stream_id, requested_packet_number) -> None:
+        super().__init__(session_id, packet_number)
         self.packet_type = 3
+        self.stream_id = stream_id
+        self.requested_packet_number = requested_packet_number
 
 
-class ConfirmationPacket(StreamControlPacket):
+class ConfirmationPacket(Packet):
 
-    def __init__(self, session_id, packet_number, control_type, stream_id, data) -> None:
-        super().__init__(session_id, packet_number, control_type, stream_id)
+    def __init__(self, session_id, packet_number, stream_id, data) -> None:
+        super().__init__(session_id, packet_number)
         self.packet_type = 4
+        self.stream_id = stream_id
         self.data = data
 
 
