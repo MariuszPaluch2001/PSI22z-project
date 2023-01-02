@@ -1,6 +1,7 @@
 from packets import *
 from typing import List
 class Stream:
+    #ważne, żebyś dodał pisanie do loggera - jest to potrzebne na prezentację
     def __init__(self,session_id,stream_id,logger=None) -> None:
         self.stream_id = stream_id
         self.session_id = session_id
@@ -46,13 +47,13 @@ class ClientStream(Stream):
         #1.czekanie na wiadomość jak nie ma nowego komunikatu
         #2.jak są komunikaty, ale za duży packet number, to wysyłasz retranmisje
         # z numerem nagłówka, na jaki czekasz i też czekasz z timeoutem
-        #3. jak jest ten, który chcemy, to go zwraczasz
+        #3. jak jest ten, który chcemy, to go zwracasz
     
 
     def get_all_messages(self) -> List[Packet]:
         ...
         #tutaj zwracasz tak długi ciąg nagłówków, jaki możez osiągnąć bez czekania na nic
-        
+
 
     def _close(self, super_operation, closing_type) -> None:
         
@@ -81,16 +82,20 @@ class ClientStream(Stream):
         self._put_packet(retransmission_packet)
 
     
-
-
-
 class ServerStream(Stream):
     def __init__(self, stream_id, logger=None) -> None:
         super().__init__(stream_id, logger)
         self.new = True
-        self.data = []
+        self.data_packets = []
 
     def process_control_packets(self):
+        #tutaj obsługujesz 2 typy pakietów
+        #1. retransmisja - szukasz w data_packets, tego, czego brakuje
+        #2. zamknięcie - wywołujesz self.close() albo shutdown()
         ...
 
+    def put_data(self, data) -> None:
+        #tutaj dzielisz na pakiety i dodajesz je do self.data_packets
+        #wrzucasz je też do wysyłki
+        ...
     
