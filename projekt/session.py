@@ -179,9 +179,8 @@ class ServerSession(Session):
         confirmation_packet = ConfirmationPacket(
             self.session_id,
             packet_number,
-            'o',
             0,
-            0
+            'o',
         )
         self._send_packet(confirmation_packet)
 
@@ -215,7 +214,7 @@ class ServerSession(Session):
         elif isinstance(packet, StreamControlPacket):
             if packet.control_type == 'o':
                 if self.stream_count() < Session.MAX_STREAM_NUMBER:
-                    new_stream = ServerStream(packet.stream_id)
+                    new_stream = ServerStream(self.session_id, packet.stream_id)
                     new_stream.new = True
                     self.streams.append(new_stream)
             else:
@@ -225,7 +224,7 @@ class ServerSession(Session):
   
         elif isinstance(packet,RetransmissionRequestPacket):
             stream = self.get_stream(packet.stream_id)
-            stream.message_buffer_in.append(packet)
+            stream.post(packet)
         else:
             raise InvalidPacket
 
