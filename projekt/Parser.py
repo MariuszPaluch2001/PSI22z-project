@@ -3,12 +3,12 @@ import packets
 
 class Parser:
     def __init__(self) -> None:
-        self.formats = {0: "@iii",
-                        1: "@iiic",
-                        2: "@iiici",
-                        3: "@iiiii",
-                        4: "@iiii100s",
-                        5: "@iiiii100s"}
+        self.formats = {0: "@hii",
+                        1: "@hiic",
+                        2: "@hiici",
+                        3: "@hiiii",
+                        4: "@hiii",
+                        5: "@hiiii100s"}
 
     def parse_packet(self, input_data) -> packets.Packet:
         packet_type = input_data[0]
@@ -34,9 +34,8 @@ class Parser:
             return packets.RetransmissionRequestPacket(*packet_fields[1:])
 
         if packet_type == 4:
-            data = packet_fields[4].decode('ascii').rstrip('\x00')
-            return packets.ConfirmationPacket(*packet_fields[1:4], data)
+            return packets.ConfirmationPacket(*packet_fields[1:])
 
         if packet_type == 5:
-            data = packet_fields[5].decode('ascii').rstrip('\x00')
-            return packets.DataPacket(*packet_fields[1:4], data)
+            data = bytes(packet_fields[5].decode('ascii').rstrip('\x00'), encoding='ascii')
+            return packets.DataPacket(*packet_fields[1:4], data, packet_fields[4])
