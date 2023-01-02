@@ -18,6 +18,8 @@ class Stream:
         self.mutex_in = Lock()
         self.mutex_out = Lock()
 
+        self.condition = Condition()
+
     def is_closed(self):
         return self.closed
 
@@ -43,11 +45,6 @@ class Stream:
 
         return packet
 
-    def post(self, data):
-        with self.condition:
-            self.put_packet(data)
-            self.condition.notify()
-
     def _put_packet(self, packet: Packet) -> None:
         if not self.closed:
             self.mutex_out.acquire()
@@ -66,10 +63,14 @@ class Stream:
             finally:
                 self.mutex_in.release()
 
+    def post(self, data):
+        with self.condition:
+            self.put_packet(data)
+            self.condition.notify()
+
 class ClientStream(Stream):
     def __init__(self, stream_id, session_id, logger=None) -> None:
         super().__init__(session_id,stream_id,logger)
-        self.condition = Condition()
 
     def get_message(self,timeout=None) -> DataPacket:
         message = self._get_packet(timeout)
@@ -104,7 +105,6 @@ class ClientStream(Stream):
             message = self._get_packet(0)
 
         return messages
-        #tutaj zwracasz tak długi ciąg nagłówków, jaki możez osiągnąć bez czekania na nic
 
 
     def _close(self, super_operation, closing_type) -> None:
