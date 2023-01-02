@@ -4,8 +4,10 @@ import time
 from stream import Stream, ClientStream, ServerStream
 from packets import DataPacket
 
-def test_put_packet():
+def test_put_packet_out():
     test_stream = Stream(1, 1)
+    data_packet_1 = DataPacket(1,1,1, b'')
+    test_stream.put_packet()
 
 
 def test_simple_get_messages():
@@ -36,7 +38,7 @@ def test_missing_get_messages():
     
     def session_simulator():
         time.sleep(1)
-        test_stream.post((data_packet_1.packet_number, data_packet_1))
+        test_stream.post(data_packet_1)
     
     thread = Thread(target=session_simulator)
     thread.start()
@@ -60,7 +62,7 @@ def test_missing_without_sleep_get_messages():
     
     def session_simulator():
         time.sleep(1)
-        test_stream.post((data_packet_1.packet_number, data_packet_1))
+        test_stream.post(data_packet_1)
     
     thread = Thread(target=session_simulator)
     thread.start()

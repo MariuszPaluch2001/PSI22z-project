@@ -1,5 +1,5 @@
 import queue
-from threading import Thread, Condition
+from threading import Condition, Lock
 from packets import *
 from typing import List
 
@@ -15,6 +15,9 @@ class Stream:
         self.closed = False
         self.data_packet_number = 1
 
+        self.mutex_in = Lock()
+        self.mutex_out = Lock()
+
     def is_closed(self):
         return self.closed
 
@@ -24,30 +27,49 @@ class Stream:
     def shutdown(self):
         self.closed = True
 
+    def put_packet(self, message : Packet):
+        self.mutex_in.acquire()
+        try:
+            self.message_buffer_in.put((message.packet_number, message))
+        finally:
+            self.mutex_in.release()
+
+    def get_packet(self):
+        self.mutex_out.acquire()
+        try:
+            packet = self.message_buffer_out.pop(0)
+        finally:
+            self.mutex_out.release()
+
+        return packet
+
+    def post(self, data):
+        with self.condition:
+            self.put_packet(data)
+            self.condition.notify()
+
     def _put_packet(self, packet: Packet) -> None:
         if not self.closed:
-            #tutaj np. mutex
-            self.message_buffer_out.append(packet)
+            self.mutex_out.acquire()
+            try:
+                self.message_buffer_out.append(packet)
+            finally:
+                self.mutex_out.release()
 
     def _get_packet(self, timeout=None) -> Packet:
-        #musisz dodać jakieś mądre czekanie
         if not self.closed:
-            #mutex
+            self.mutex_in.acquire()
             try:
-                print(self.message_buffer_in.queue)
                 return self.message_buffer_in.get(block = True, timeout=timeout)[1]
             except queue.Empty:
                 pass
+            finally:
+                self.mutex_in.release()
 
 class ClientStream(Stream):
     def __init__(self, stream_id, session_id, logger=None) -> None:
         super().__init__(session_id,stream_id,logger)
         self.condition = Condition()
-    
-    def post(self, data):
-        with self.condition:
-            self.message_buffer_in.put(data)
-            self.condition.notify()
 
     def get_message(self,timeout=None) -> DataPacket:
         message = self._get_packet(timeout)
