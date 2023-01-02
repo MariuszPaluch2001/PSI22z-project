@@ -175,12 +175,10 @@ class ServerSession(Session):
         super().__init__()
 
     def confirm(self, packet_number:int) -> None:
-        #confirm jest imo źle
         confirmation_packet = ConfirmationPacket(
             self.session_id,
             packet_number,
             0,
-            'o',
         )
         self._send_packet(confirmation_packet)
 

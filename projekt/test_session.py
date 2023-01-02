@@ -279,13 +279,10 @@ def test_client_receive_data_packet():
     s.receive_packet()
     ret = stream._get_packet()
     assert isinstance(ret, DataPacket)
-    assert ret.session_id == 1
-    assert ret.packet_number == 1
-    assert ret.packet_number == 1
-    assert ret.data == b'abc'
+    assert ret.to_binary() == packet.to_binary()
 
 def test_client_receive_confirmation_packet():
-    packet = ConfirmationPacket(1,1,1,'a')
+    packet = ConfirmationPacket(1,1,1)
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
     s = ClientSession()
@@ -307,8 +304,8 @@ def test_client_receive_invalid_packet():
 
 def test_client_receive_multiple_packets():
     packets = [
-        ConfirmationPacket(1,1,1,'a'),
-        ConfirmationPacket(1,2,0,'a')
+        ConfirmationPacket(1,1,1),
+        ConfirmationPacket(1,2,0)
     ]
 
     class DummySocket:
