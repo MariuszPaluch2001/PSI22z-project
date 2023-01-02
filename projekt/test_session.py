@@ -552,4 +552,16 @@ def test_shutdown_server_session():
 
 
 def test_server_packet_confirmation():
-    ...
+    class DummySocket:
+        def send(self,data): self.data = data
+
+    s = ServerSession()
+    s.socket = DummySocket()
+    s.is_open = True
+    s.session_id = 2
+    s.confirm(2)
+    packet = Parser().parse_packet(s.socket.data)
+    assert isinstance(packet, ConfirmationPacket)
+    assert packet.session_id == s.session_id
+    assert packet.packet_number == 2
+    assert packet.stream_id == 0
