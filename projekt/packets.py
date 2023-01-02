@@ -83,11 +83,14 @@ class RetransmissionRequestPacket(Packet):
 
 
 class DataPacket(Packet):
-    def __init__(self, session_id: int, packet_number: int, stream_id: int, data: bytearray) -> None:
+    def __init__(self, session_id: int, packet_number: int, stream_id: int, data: bytearray, timestamp=None) -> None:
         super().__init__(session_id, packet_number)
         self.packet_type = 5
         self.stream_id = stream_id
-        self.timestamp = int(time.mktime(datetime.now().timetuple()))
+
+        if timestamp is None:
+            self.timestamp = int(time.mktime(datetime.now().timetuple()))
+        else: self.timestamp = timestamp
 
         if (len(data) > 100):
             raise TooLongDataError()
