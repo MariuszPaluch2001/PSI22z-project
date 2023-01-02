@@ -1,5 +1,6 @@
 import queue
 from threading import Condition, Lock
+import io
 from packets import *
 from typing import List
 
@@ -135,10 +136,11 @@ class ClientStream(Stream):
 
     
 class ServerStream(Stream):
-    def __init__(self, stream_id, logger=None) -> None:
-        super().__init__(stream_id, logger)
+    def __init__(self, session_id, stream_id, logger=None) -> None:
+        super().__init__(session_id, stream_id, logger)
         self.new = True
         self.data_packets = []
+        self.data_packet_number_to_send = 1
 
     def process_control_packets(self):
         #tutaj obsługujesz 2 typy pakietów
@@ -146,8 +148,22 @@ class ServerStream(Stream):
         #2. zamknięcie - wywołujesz self.close() albo shutdown()
         ...
 
-    def put_data(self, data) -> None:
-        #tutaj dzielisz na pakiety i dodajesz je do self.data_packets
-        #wrzucasz je też do wysyłki
-        ...
+    def put_data(self, data : bytes) -> None:
+        data_stream = io.BytesIO(data)
+        while True:
+            data_chunk = data_stream.read(96)
+            
+            if not data_chunk:
+                break
+            
+            self.data_packets.append(
+                DataPacket(
+                    self.session_id,
+                    self.stream_id,
+                    self.data_packet_number_to_send,
+                    data_chunk
+                )
+            )
+            self.data_packet_number_to_send  += 1
+
 

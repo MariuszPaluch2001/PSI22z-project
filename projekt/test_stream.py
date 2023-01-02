@@ -137,4 +137,19 @@ def test_mixed_get_all_messages():
     assert messages[1] == data_packets[1]
     assert messages[2] == data_packets[2]
 
+def test_put_data_server_stream_empty():
+    test_stream = ServerStream(1, 1)
+    test_stream.put_data(b'')
+    assert test_stream.data_packets == []
 
+def test_put_data_server_stream_without_padding():
+    test_stream = ServerStream(1, 1)
+    test_stream.put_data(b'0'*96*4)
+    assert len(test_stream.data_packets) == 4
+    assert [elem.data for elem in test_stream.data_packets] == [b'0'*96 for _ in range(4)]
+
+def test_put_data_server_stream_without_padding():
+    test_stream = ServerStream(1, 1)
+    test_stream.put_data(b'0'*144)
+    assert len(test_stream.data_packets) == 2
+    assert [elem.data for elem in test_stream.data_packets] == [b'0'*96, b'0'*48]
