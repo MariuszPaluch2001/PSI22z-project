@@ -4,10 +4,26 @@ import time
 from stream import Stream, ClientStream, ServerStream
 from packets import DataPacket
 
-def test_put_packet_out():
+def test_put_packet_out_simple():
+    test_stream = Stream(1, 1)
+    data_packet = DataPacket(1,1,1, b'')
+    test_stream._put_packet(data_packet)
+    assert len(test_stream.message_buffer_out) == 1
+    assert test_stream.message_buffer_out[0].packet_number == 1
+
+def test_get_packet_in_simple():
+    test_stream = Stream(1, 1)
+    data_packet = DataPacket(1,1,1, b'')
+    test_stream.message_buffer_in.put((data_packet.packet_number, data_packet))
+    assert test_stream._get_packet() == data_packet
+
+def test_put_packet_in_simple():
     test_stream = Stream(1, 1)
     data_packet_1 = DataPacket(1,1,1, b'')
-    test_stream.put_packet()
+
+def test_get_packet_out_simple():
+    test_stream = Stream(1, 1)
+    data_packet_1 = DataPacket(1,1,1, b'')
 
 
 def test_simple_get_messages():
