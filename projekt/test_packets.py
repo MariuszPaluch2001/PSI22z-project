@@ -1,6 +1,8 @@
+import pytest
 from packets import *
-import sys
-sys.path.insert(1, 'projekt')
+
+
+from projekt.packets_exceptions import *
 
 
 def test_char_arr_to_bin():
@@ -39,3 +41,8 @@ def test_to_binary_Packet():
     fmt = packet.get_struct_fmt()
     unpacked = struct.unpack_from(fmt, output)
     assert unpacked == (2, 1321, 2212, b'o', 12212)
+
+
+def test_too_long_data():
+    with pytest.raises(TooLongDataError):
+        packet = DataPacket(1, 2, 3, 101 * "a")
