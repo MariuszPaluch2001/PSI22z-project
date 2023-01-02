@@ -1,18 +1,19 @@
+import queue
+from multiprocessing import Process, Condition
 from packets import *
 from typing import List
+
 class Stream:
     #ważne, żebyś dodał pisanie do loggera - jest to potrzebne na prezentację
     def __init__(self,session_id,stream_id,logger=None) -> None:
         self.stream_id = stream_id
         self.session_id = session_id
         self.logger = logger
-        #Kolejki - kolejki priorytetowe ?
-        self.message_buffer_in = []
+        self.message_buffer_in = queue.PriorityQueue()
         self.message_buffer_out = []
 
         self.closed = False
         self.data_packet_number = 1
-        self.other_packet_number = 1
 
     def is_closed(self):
         return self.closed
@@ -32,26 +33,55 @@ class Stream:
         #musisz dodać jakieś mądre czekanie
         if not self.closed:
             #mutex
-            if len(self.message_buffer_in) > 0:
-                return self.message_buffer_in.pop(0)
-
-
+            try:
+                print(self.message_buffer_in.queue)
+                return self.message_buffer_in.get(block = True, timeout=timeout)[1]
+            except queue.Empty:
+                pass
 
 class ClientStream(Stream):
     def __init__(self, stream_id, session_id, logger=None) -> None:
         super().__init__(session_id,stream_id,logger)
-
-    def get_message(self,timeout=None) -> None:
-        ...
-        #tutaj musisz zrobić 3 rzeczy
-        #1.czekanie na wiadomość jak nie ma nowego komunikatu
-        #2.jak są komunikaty, ale za duży packet number, to wysyłasz retranmisje
-        # z numerem nagłówka, na jaki czekasz i też czekasz z timeoutem
-        #3. jak jest ten, który chcemy, to go zwracasz
+        self.condition = Condition()
     
+    def post(self, data):
+        with self.condition:
+            self.message_buffer_in.put(data)
+            self.condition.notify()
+
+    def get_message(self,timeout=None) -> DataPacket:
+        message = self._get_packet(timeout)
+        if message is None:
+            return
+
+        while (message.packet_number != self.data_packet_number):
+            self.message_buffer_in.put((message.packet_number, message))
+            self._request_retransmission(self.data_packet_number)
+
+            with self.condition:
+                self.condition.wait()
+                message = self._get_packet(timeout)
+
+        self.data_packet_number += 1
+        return message
 
     def get_all_messages(self) -> List[Packet]:
-        ...
+        messages = []
+        next = self.data_packet_number
+        
+        message = self._get_packet(0)
+        while(message):
+            if message.packet_number == next:
+                messages.append(message)
+                next +=1
+            else:
+                self.message_buffer_in.put((message.packet_number, message))
+                self.data_packet_number = next
+                break
+
+            message = self._get_packet(0)
+
+        return messages
         #tutaj zwracasz tak długi ciąg nagłówków, jaki możez osiągnąć bez czekania na nic
 
 
@@ -59,11 +89,10 @@ class ClientStream(Stream):
         
         closing_packet = StreamControlPacket(
             self.session_id,
-            self.other_packet_number,
+            0,
             closing_type
         )
         self._put_packet(closing_packet)
-        self.other_packet_number = self.other_packet_number + 1
         super_operation(super())
     
     def close(self) -> None:

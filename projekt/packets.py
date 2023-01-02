@@ -1,5 +1,6 @@
 from datetime import datetime
 import time
+import bitstring
 
 
 def str_to_bin(val: str):
