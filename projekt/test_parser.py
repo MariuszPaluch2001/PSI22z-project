@@ -102,7 +102,7 @@ def test_reading_RetransmissionRequestPacketUsingPacketObject():
 
 def test_reading_ConfirmationPacketPacket():
     parser_test = Parser()
-    bin_data = b'\x04\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\xc5\x04\x00\x00\x54\x45\x53\x54\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    bin_data = b'\x04\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\xc5\x04\x00\x00'
 
     new_packet = parser_test.parse_packet(bin_data)
 
@@ -111,11 +111,9 @@ def test_reading_ConfirmationPacketPacket():
     assert new_packet.session_id == 1
     assert new_packet.packet_number == 2
     assert new_packet.stream_id == 1221
-    assert new_packet.data == 'TEST'
-
 def test_reading_ConfirmationPacketUsingPacketObject():
     parser_test = Parser()
-    packet_test = packets.ConfirmationPacket(1, 2, 3, 'hello')
+    packet_test = packets.ConfirmationPacket(1, 2, 3)
 
     new_packet = parser_test.parse_packet(packet_test.to_binary())
 
@@ -124,10 +122,8 @@ def test_reading_ConfirmationPacketUsingPacketObject():
     assert new_packet.session_id == 1
     assert new_packet.packet_number == 2
     assert new_packet.stream_id == 3
-    assert new_packet.data == 'hello'
 
-
-def test_reading_DataPacketPacket():
+def test_reading_DataPacket():
     parser_test = Parser()
     bin_data = b'\x05\x00\x00\x00\x0b\x00\x00\x00\x0b\x00\x00\x00\x0b\x00\x00\x00\x97\x1b\xb3\x63\x74\x65\x73\x74\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
@@ -139,12 +135,12 @@ def test_reading_DataPacketPacket():
     assert new_packet.packet_number == 11
     assert new_packet.stream_id == 11
     assert new_packet.timestamp == 1672682391
-    assert new_packet.data == 'test'
+    assert new_packet.data[:4] == b'test'
 
 def test_reading_DataPacketUsingPacketObject():
     parser_test = Parser()
     timestamp = int(time.mktime(datetime.now().timetuple()))
-    packet_test = packets.DataPacket(8, 9, 10, 'hello', timestamp)
+    packet_test = packets.DataPacket(8, 9, 10, b'hello', timestamp)
 
     new_packet = parser_test.parse_packet(packet_test.to_binary())
 
@@ -154,4 +150,4 @@ def test_reading_DataPacketUsingPacketObject():
     assert new_packet.packet_number == 9
     assert new_packet.stream_id == 10
     assert new_packet.timestamp == timestamp
-    assert new_packet.data == 'hello'
+    assert new_packet.data[:5] == b'hello'
