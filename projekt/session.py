@@ -61,6 +61,7 @@ class Session:
     def _send_control_packet(self, packet: SessionControlPacket) -> None:
         if self.is_open:
             self._send_packet(packet)
+            packet.packet_number = self.current_packet_number
             self.current_packet_number = self.current_packet_number + 1
             self.unconfirmed_packets.append([packet,datetime.now()])
 

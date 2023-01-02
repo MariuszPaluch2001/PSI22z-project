@@ -89,7 +89,7 @@ def test_monkeypatched_control_packet_sending():
     s.socket = dummy
     s.is_open = True
     last_current = s.current_packet_number
-    packet = SessionControlPacket(1,2,'o')
+    packet = SessionControlPacket(1,last_current,'o')
     s._send_control_packet(packet)
     assert dummy.data == packet.to_binary()
     assert s.current_packet_number == last_current + 1
