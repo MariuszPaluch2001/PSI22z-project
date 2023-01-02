@@ -120,12 +120,10 @@ def test_monkeypatched_packet_receiving():
     s.socket = dummy
     s.is_open = True
     ret = s._receive_packet()
-    assert ret == packet.to_binary()
-    #ret = s._receive_packet()
-    #assert isinstance(ret, SessionControlPacket)
-    #assert ret.session_id == 1
-    #assert ret.packet_number == 2
-    #assert ret.control_type == 'o'
+    assert isinstance(ret, SessionControlPacket)
+    assert ret.session_id == 1
+    assert ret.packet_number == 2
+    assert ret.control_type == 'o'
 
 
 def test_monkeypatched_packet_receiving_without_opening():
@@ -269,8 +267,60 @@ def test_open_new_stream_after_max():
     with pytest.raises(MaximalStreamCountReached):
         s.open_new_stream()
 
-def test_client_receive_packets():
-    ...
+def test_client_receive_data_packet():
+    packet = DataPacket(1,1,1,b'abc')
+    class DummySocket:
+        def recvfrom(self, idk): return (packet.to_binary(), None)
+    s = ClientSession()
+    s.socket = DummySocket()
+    s.is_open = True
+    stream = ClientStream(1,1)
+    s.streams.append(stream)
+    s.receive_packet()
+    ret = stream._get_packet()
+    assert isinstance(ret, DataPacket)
+    assert ret.session_id == 1
+    assert ret.packet_number == 1
+    assert ret.packet_number == 1
+    assert ret.data == b'abc'
+
+def test_client_receive_confirmation_packet():
+    packet = ConfirmationPacket(1,1,1,'a')
+    class DummySocket:
+        def recvfrom(self, idk): return (packet.to_binary(), None)
+    s = ClientSession()
+    s.socket = DummySocket()
+    s.is_open = True
+    s.unconfirmed_packets.append([Packet(1,1), datetime.now()])
+    s.receive_packet()
+    assert len(s.unconfirmed_packets) == 0
+
+def test_client_receive_invalid_packet():
+    packet = RetransmissionRequestPacket(1,1,1,1)
+    class DummySocket:
+        def recvfrom(self, idk): return (packet.to_binary(), None)
+    s = ClientSession()
+    s.socket = DummySocket()
+    s.is_open = True
+    with pytest.raises(InvalidPacket):
+        s.receive_packet()
+
+def test_client_receive_multiple_packets():
+    packets = [
+        ConfirmationPacket(1,1,1,'a'),
+        ConfirmationPacket(1,2,0,'a')
+    ]
+
+    class DummySocket:
+        def recvfrom(self, idk): return (packets.pop().to_binary(), None)
+    s = ClientSession()
+    s.socket = DummySocket()
+    s.is_open = True
+    s.unconfirmed_packets.append([Packet(1,1), datetime.now()])
+    s.unconfirmed_packets.append([Packet(1,2), datetime.now()])
+
+    s.receive_packets(2)
+    assert len(s.unconfirmed_packets) == 0
 
 def test_close_client_session():
     class DummySocket:

@@ -69,9 +69,7 @@ class Session:
         if self.is_open:
             data = self.socket.recvfrom(Session.BUFSIZE)
             binary_data = data[0]
-            #return self.parser.parse_packet(binary_data)
-            #quick fix
-            return binary_data
+            return self.parser.parse_packet(binary_data)
     def send_packets(self) -> Stream:
         self.resend_packets()
         for stream in self.get_active_streams():
@@ -99,6 +97,9 @@ class Session:
     def get_max_stream_id(self) -> int:
         return 0 if len(self.streams) == 0 else max(stream.stream_id for stream in self.streams)
 
+    def receive_packets(self, packet_count=10) -> None:
+        for _ in range(packet_count):
+            self.receive_packet()
     
 class ClientSession(Session):
     def __init__(self) -> None:
@@ -138,17 +139,17 @@ class ClientSession(Session):
         self.streams.append(stream)
         return stream      
     
-    def receive_packets(self, packet_count=10) -> None:
-        #stream control packets?
-        for _ in range(packet_count):
-            packet = self._receive_packet()
-            if isinstance(packet, DataPacket):
-                stream = self.get_stream(packet.stream_id)
-                stream.message_buffer_in.append(packet)
-            elif isinstance(packet, ConfirmationPacket):
-                self.confirm_packet(packet.packet_number)
-            else:
-                raise InvalidPacket
+    def receive_packet(self) -> None:
+        packet = self._receive_packet()
+        if isinstance(packet, DataPacket):
+            stream = self.get_stream(packet.stream_id)
+            stream.post(packet)
+        elif isinstance(packet, ConfirmationPacket):
+            self.confirm_packet(packet.packet_number)
+        else:
+            raise InvalidPacket
+
+
 
     def _close(self, stream_operation, close_type : str) -> None:
         for stream in self.get_active_streams():
@@ -202,32 +203,31 @@ class ServerSession(Session):
                 correct = True
         self.is_open = True
 
-    def receive_packets(self, packet_count=10) -> None:
-        for _ in range(packet_count):
-            packet = self._receive_packet()
-            if isinstance(packet, SessionControlPacket):
-                if packet.control_type == 'c':
-                    self.close()
-                elif packet.control_type == 's':
-                    self.shutdown()
-                elif packet.control_type == 'o':
-                    pass
-            elif isinstance(packet, StreamControlPacket):
-                if packet.control_type == 'o':
-                    if self.stream_count() < Session.MAX_STREAM_NUMBER:
-                        new_stream = ServerStream(packet.stream_id)
-                        new_stream.new = True
-                        self.streams.append(new_stream)
-                else:
-                    stream = self.get_stream(packet.stream_id)
-                    stream.close()
-                self.confirm(packet.packet_number)
-  
-            elif isinstance(packet,RetransmissionRequestPacket):
-                stream = self.get_stream(packet.stream_id)
-                stream.message_buffer_in.append(packet)
+    def receive_packet(self) -> None:
+        packet = self._receive_packet()
+        if isinstance(packet, SessionControlPacket):
+            if packet.control_type == 'c':
+                self.close()
+            elif packet.control_type == 's':
+                self.shutdown()
+            elif packet.control_type == 'o':
+                pass
+        elif isinstance(packet, StreamControlPacket):
+            if packet.control_type == 'o':
+                if self.stream_count() < Session.MAX_STREAM_NUMBER:
+                    new_stream = ServerStream(packet.stream_id)
+                    new_stream.new = True
+                    self.streams.append(new_stream)
             else:
-                raise InvalidPacket
+                stream = self.get_stream(packet.stream_id)
+                stream.close()
+            self.confirm(packet.packet_number)
+  
+        elif isinstance(packet,RetransmissionRequestPacket):
+            stream = self.get_stream(packet.stream_id)
+            stream.message_buffer_in.append(packet)
+        else:
+            raise InvalidPacket
 
     def get_new_streams(self) -> List[ServerStream]:
         streams = list(filter(lambda x : x.new, self.get_active_streams()))
