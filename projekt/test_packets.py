@@ -2,7 +2,7 @@ import pytest
 from packets import *
 
 
-from projekt.packets_exceptions import *
+from packets_exceptions import *
 
 
 def test_char_arr_to_bin():
@@ -12,29 +12,31 @@ def test_char_arr_to_bin():
     assert spreaded == [1, 2, b'asd', 3]
 
 
-def test_get_stream_fmt_DataPacket():
-    packet = ConfirmationPacket(1, 2, 1221, "haloo")
+def test_get_stream_fmt_ConfirmationPacket():
+    packet = ConfirmationPacket(1, 2, 1221)
     format = packet.get_struct_fmt()
-    assert format == "@iiii100s"
+    assert format == "@hiii"
 
 
 def test_get_stream_fmt_StreamControlPacket():
     packet = StreamControlPacket(1321, 2212, 'o', 12212)
     format = packet.get_struct_fmt()
-    assert format == "@iiici"
+    assert format == "@hiici"
 
 
 def test_to_binary_ConfirmationPacket():
-    packet = ConfirmationPacket(2, 3, 4, "halololo")
+    packet = DataPacket(2, 3, 4, b"halololo")
+    packet.timestamp = 123
     output = packet.to_binary()
 
-    fmt = packet.get_struct_fmt()
+    fmt = packet.get_struct_fmt() + "100s"
+
     unpacked = struct.unpack_from(fmt, output)
-    assert unpacked[:4] == (4, 2, 3, 4)
-    assert unpacked[4].decode('ascii').rstrip('\x00') == "halololo"
+    assert unpacked[:5] == (5, 2, 3, 4, 123)
+    assert unpacked[5].decode('ascii').rstrip('\x00') == "halololo"
 
 
-def test_to_binary_Packet():
+def test_to_binary_StreamControlPacket():
     packet = StreamControlPacket(1321, 2212, 'o', 12212)
     output = packet.to_binary()
 

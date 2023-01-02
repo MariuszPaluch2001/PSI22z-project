@@ -17,10 +17,12 @@ class Packet:
         format = "@"
 
         for key in fields_map.keys():
-            if key == "control_type":
+            if key == "packet_type":
+                format += "h"
+            elif key == "control_type":
                 format += "c"
             elif key == "data":
-                format += "100s"
+                pass
             else:
                 format += "i"
 
@@ -37,10 +39,11 @@ class Packet:
         return output
 
     def to_binary(self) -> bytes:
-        struct_format = self.get_struct_fmt()
-
         fields_map = self.__dict__
+
         struct_array = self._char_arr_to_bin(fields_map.values())
+
+        struct_format = self.get_struct_fmt()
 
         return struct.pack(struct_format, *struct_array)
 
@@ -79,22 +82,8 @@ class RetransmissionRequestPacket(Packet):
         self.requested_packet_number = requested_packet_number
 
 
-class ConfirmationPacket(Packet):
-
-    def __init__(self, session_id: int, packet_number: int, stream_id: int, data: str) -> None:
-        super().__init__(session_id, packet_number)
-        self.packet_type = 4
-        self.stream_id = stream_id
-
-        if (len(data) > 100):
-            raise TooLongDataError()
-
-        self.data = data
-
-
 class DataPacket(Packet):
-
-    def __init__(self, session_id: int, stream_id: int, packet_number: int, data: str) -> None:
+    def __init__(self, session_id: int, packet_number: int, stream_id: int, data: bytearray) -> None:
         super().__init__(session_id, packet_number)
         self.packet_type = 5
         self.stream_id = stream_id
@@ -102,11 +91,27 @@ class DataPacket(Packet):
 
         if (len(data) > 100):
             raise TooLongDataError()
+        n_pad_bytes = 100 - len(data)
+        self.data = data + n_pad_bytes * b'\x00'
 
+    def to_binary(self) -> bytes:
+        data = self.data
+        del self.__dict__['data']
+        bin_struct = super().to_binary() + data
         self.data = data
+        return bin_struct
+
+
+class ConfirmationPacket(Packet):
+
+    def __init__(self, session_id: int, packet_number: int, stream_id: int) -> None:
+        super().__init__(session_id, packet_number)
+        self.packet_type = 4
+        self.stream_id = stream_id
 
 
 class ErrorPacket(Packet):
 
     def __init__(self, session_id: int, packet_number: int) -> None:
         super().__init__(session_id, packet_number)
+        self.packet_type = 0
