@@ -357,8 +357,69 @@ def test_shutdown_client_session():
 def test_create_server_session():
     ss = ServerSession()
 
+def test_open_socket():
+    SERVER_PORT = 9001
+    CLIENT_PORT = 9000
+    def dummy_client():
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.bind(("127.0.0.1", CLIENT_PORT))
+            s.connect(("127.0.0.1", SERVER_PORT))
+            s.send(SessionControlPacket(
+                2,
+                1,
+                'o'
+            ).to_binary())
+    s = ServerSession()
+    s.open_socket("127.0.0.1", SERVER_PORT)
+    thread = threading.Thread(target=dummy_client)
+    assert s.my_address == '127.0.0.1'
+    assert s.my_port == SERVER_PORT
+    thread.start()
+    data = s.socket.recvfrom(128)
+    packet_data = data[0]
+    packet = Parser().parse_packet(packet_data)
+    assert isinstance(packet, SessionControlPacket)
+    assert packet.session_id == 2
+    assert packet.packet_number == 1
+    assert packet.control_type == 'o'
+    thread.join()
+    s.close()
+
 def test_wait_for_connection():
-    ...
+    SERVER_PORT = 8021
+    CLIENT_PORT = 8022
+    confirm = None
+    def dummy_client():
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.bind(("127.0.0.1", CLIENT_PORT))
+            s.connect(("127.0.0.1", SERVER_PORT))
+            s.send(SessionControlPacket(
+                2,
+                1,
+                'o'
+            ).to_binary())
+            data = s.recvfrom(128)
+            packet_data = data[0]
+            nonlocal confirm
+            confirm = Parser().parse_packet(packet_data)
+
+    s = ServerSession()
+    s.open_socket("127.0.0.1", SERVER_PORT)
+    thread = threading.Thread(target=dummy_client)
+    assert s.my_address == '127.0.0.1'
+    assert s.my_port == SERVER_PORT
+    thread.start()
+
+    s.wait_for_connection()
+    thread.join()
+    assert s.is_open
+    assert s.host_address == '127.0.0.1'
+    assert s.host_port == CLIENT_PORT
+    assert s.session_id == 2
+    assert isinstance(confirm, ConfirmationPacket)
+    assert confirm.session_id == 2
+    assert confirm.packet_number == 1
+    s.close()
 
 def test_server_receive_session_closing_packet():
     packet = SessionControlPacket(1,1,'c')

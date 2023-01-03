@@ -182,23 +182,27 @@ class ServerSession(Session):
         )
         self._send_packet(confirmation_packet)
 
-    def wait_for_connection(self, my_address: str, my_port: int) -> None:
+    def open_socket(self, my_address: str, my_port: int) -> None:
         self.my_address = my_address
         self.my_port = my_port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((my_address, my_port))
+
+    def wait_for_connection(self) -> None:
         correct = False
         while not correct:
             data = self.socket.recvfrom(Session.BUFSIZE)
             host_info = data[1]
             packet = self.parser.parse_packet(data[0])
             if isinstance(packet, SessionControlPacket) and packet.control_type == 'o':
+                self.session_id = packet.session_id
                 self.socket.connect(host_info)
+                self.is_open = True
                 self.confirm(packet.packet_number)
                 self.host_address = host_info[0]
                 self.host_port = host_info[1]
                 correct = True
-        self.is_open = True
+
 
     def receive_packet(self) -> None:
         packet = self._receive_packet()
