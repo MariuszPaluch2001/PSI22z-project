@@ -32,6 +32,7 @@ class Stream:
 
     def put_packet(self, message : Packet):
         self.mutex_in.acquire()
+
         try:
             self.message_buffer_in.put((message.packet_number, message))
         finally:
@@ -45,6 +46,13 @@ class Stream:
             self.mutex_out.release()
 
         return packet
+
+    def put_packet_to_send(self,packet):
+        self.mutex_out.acquire()
+        try:
+            packet = self.message_buffer_out.append(packet)
+        finally:
+            self.mutex_out.release()
 
     def _put_packet(self, packet: Packet) -> None:
         if not self.closed:
@@ -157,14 +165,16 @@ class ServerStream(Stream):
             data_chunk = data_stream.read(100)
             if not data_chunk:
                 break
-            self.data_packets.append(
-                DataPacket(
+            packet = DataPacket(
                     self.session_id,
-                    self.stream_id,
                     self.data_packet_number_to_send,
+                    self.stream_id,
                     bytearray(data_chunk)
                 )
+            self.data_packets.append(
+                packet
             )
+            self.put_packet_to_send(packet)
             self.data_packet_number_to_send  += 1
 
 

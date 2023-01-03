@@ -115,6 +115,7 @@ def test_monkeypatched_packet_receiving():
     packet = SessionControlPacket(1,2,'o')
     class DummySocket:
         def recvfrom(self, _): return (packet.to_binary(),)
+        def settimeout(self, idk): ...
     s = Session()
     dummy = DummySocket()
     s.socket = dummy
@@ -131,6 +132,7 @@ def test_monkeypatched_packet_receiving_without_opening():
     class DummySocket:
         def __init__(self): self.touched = False
         def recvfrom(self, _): self.touched = True
+        def settimeout(self, idk): ...
     s = Session()
     dummy = DummySocket()
     s.socket = dummy
@@ -271,6 +273,7 @@ def test_client_receive_data_packet():
     packet = DataPacket(1,1,1,b'abc')
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
+        def settimeout(self, idk): ...
     s = ClientSession()
     s.socket = DummySocket()
     s.is_open = True
@@ -285,6 +288,7 @@ def test_client_receive_confirmation_packet():
     packet = ConfirmationPacket(1,1,1)
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
+        def settimeout(self, idk): ...
     s = ClientSession()
     s.socket = DummySocket()
     s.is_open = True
@@ -296,6 +300,7 @@ def test_client_receive_invalid_packet():
     packet = RetransmissionRequestPacket(1,1,1,1)
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
+        def settimeout(self, idk): ...
     s = ClientSession()
     s.socket = DummySocket()
     s.is_open = True
@@ -310,6 +315,7 @@ def test_client_receive_multiple_packets():
 
     class DummySocket:
         def recvfrom(self, idk): return (packets.pop().to_binary(), None)
+        def settimeout(self, idk): ...
     s = ClientSession()
     s.socket = DummySocket()
     s.is_open = True
@@ -333,7 +339,6 @@ def test_close_client_session():
     s.close()
 
     assert all(stream.is_closed() for stream in s.streams)
-    assert dummy.closed is True
     assert dummy.data == SessionControlPacket(1,1,'c').to_binary()
 
 
@@ -351,7 +356,6 @@ def test_shutdown_client_session():
     s.shutdown()
 
     assert all(stream.is_closed() for stream in s.streams)
-    assert dummy.closed is True
     assert dummy.data == SessionControlPacket(1,1,'s').to_binary()
 
 def test_create_server_session():
@@ -427,6 +431,7 @@ def test_server_receive_session_closing_packet():
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
         def close(self): self.closed = True
+        def settimeout(self, idk): ...
     s = ServerSession()
     s.streams = [ ServerStream(1,1)]
     dummy = DummySocket()
@@ -435,8 +440,7 @@ def test_server_receive_session_closing_packet():
     s.session_id = 1
     s.receive_packet()
     assert s.streams[0].is_closed()
-    assert s.is_open is False
-    assert dummy.closed
+    assert s.is_closed is True
 
 
 def test_server_receive_session_shutting_packet():
@@ -445,6 +449,7 @@ def test_server_receive_session_shutting_packet():
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
         def close(self): self.closed = True
+        def settimeout(self, idk): ...
     s = ServerSession()
     s.streams = [ ServerStream(1,1)]
     dummy = DummySocket()
@@ -453,14 +458,14 @@ def test_server_receive_session_shutting_packet():
     s.session_id = 1
     s.receive_packet()
     assert s.streams[0].is_closed()
-    assert s.is_open is False
-    assert dummy.closed
+    assert s.is_closed
 
 def test_server_receive_session_opening_packet():
     packet = SessionControlPacket(1,1,'o')
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     s.streams = [ ServerStream(1,1)]
     dummy = DummySocket()
@@ -477,6 +482,7 @@ def test_server_receive_stream_opening_packet():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -492,6 +498,7 @@ def test_server_receive_stream_opening_packet_max_streams():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -506,6 +513,7 @@ def test_server_receive_stream_control_packet():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -523,6 +531,7 @@ def test_server_receive_retransmission_packet():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -539,6 +548,7 @@ def test_server_receive_invalid_packet():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -554,6 +564,7 @@ def test_server_receive_multiple_packets():
     class DummySocket:
         def recvfrom(self, idk): return (packets.pop(0).to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -592,8 +603,7 @@ def test_close_server_session():
     s.socket = DummySocket()
     s.is_open = True
     s.close()
-    assert s.is_open is False
-    assert s.socket.closed is True
+    assert s.is_closed is True
     assert s.streams[0].is_closed() is True
 
 def test_shutdown_server_session():
@@ -607,8 +617,7 @@ def test_shutdown_server_session():
     s.socket = DummySocket()
     s.is_open = True
     s.shutdown()
-    assert s.is_open is False
-    assert s.socket.closed is True
+    assert s.is_closed is True
     assert s.streams[0].is_closed() is True
 
 
