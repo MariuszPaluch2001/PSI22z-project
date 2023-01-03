@@ -192,4 +192,4 @@ def test_put_data_server_stream_without_padding():
     test_stream.put_data(b'0'*150)
     assert len(test_stream.data_packets) == 2
     assert test_stream.data_packets[0].data == bytearray(b'0'*100)
-    assert test_stream.data_packets[1].data == bytearray(b'0'*50 + b'\x00'*50)
+    assert test_stream.data_packets[1].data == bytearray(b'0'*50 )
