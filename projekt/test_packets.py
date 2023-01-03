@@ -29,11 +29,12 @@ def test_to_binary_ConfirmationPacket():
     packet.timestamp = 123
     output = packet.to_binary()
 
-    fmt = packet.get_struct_fmt() + "100s"
+    fmt = packet.get_struct_fmt()
 
     unpacked = struct.unpack_from(fmt, output)
+    data = output[20:]
     assert unpacked[:5] == (5, 2, 3, 4, 123)
-    assert unpacked[5].decode('ascii').rstrip('\x00') == "halololo"
+    assert data.decode('ascii').rstrip('\x00') == "halololo"
 
 
 def test_to_binary_StreamControlPacket():
