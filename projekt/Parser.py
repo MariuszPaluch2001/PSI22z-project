@@ -8,7 +8,7 @@ class Parser:
                         2: "@hiici",
                         3: "@hiiii",
                         4: "@hiii",
-                        5: "@hiiii100s"}
+                        5: "@hiiii"}
 
     def parse_packet(self, input_data) -> packets.Packet:
         packet_type = input_data[0]
@@ -37,5 +37,5 @@ class Parser:
             return packets.ConfirmationPacket(*packet_fields[1:])
 
         if packet_type == 5:
-            data = bytes(packet_fields[5].decode('ascii').rstrip('\x00'), encoding='ascii')
+            data = input_data[20:]
             return packets.DataPacket(*packet_fields[1:4], data, packet_fields[4])

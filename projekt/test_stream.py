@@ -2,7 +2,7 @@ from threading import Thread
 import time
 
 from stream import Stream, ClientStream, ServerStream
-from packets import DataPacket
+from packets import DataPacket, RetransmissionRequestPacket
 
 def test_put_packet_out_simple():
     test_stream = Stream(1, 1)
@@ -29,12 +29,32 @@ def test_get_packet_out_simple():
     test_stream.message_buffer_out.append((data_packet))
     assert test_stream.get_packet() == data_packet
 
+def test_mutex_in_sync():
+    test_stream = Stream(1, 1)
+    data_packet_1 = DataPacket(1,1,1, b'')
+    def writer():
+        test_stream.put_packet(data_packet_1)
+    
+    thread = Thread(target=writer)
+    thread.start()
+    assert test_stream._get_packet(1) == data_packet_1 
+
+def test_mutex_out_sync():
+    test_stream = Stream(1, 1)
+    data_packet_1 = DataPacket(1,1,1, b'')
+    def writer():
+        test_stream._put_packet(data_packet_1)
+    
+    thread = Thread(target=writer)
+    thread.start()
+    assert test_stream.get_packet() == data_packet_1 
+
 def test_simple_get_messages():
     test_stream = ClientStream(1, 1)
     
-    data_packet_1 = DataPacket(1,1,1, b'')
-    data_packet_2 = DataPacket(1,1,2, b'')
-    data_packet_3 = DataPacket(1,1,3, b'')
+    data_packet_1 = DataPacket(1,1,1,b'')
+    data_packet_2 = DataPacket(1,2,1,b'')
+    data_packet_3 = DataPacket(1,3,1,b'')
     
     test_stream.message_buffer_in.put((data_packet_1.packet_number, data_packet_1))
     test_stream.message_buffer_in.put((data_packet_2.packet_number, data_packet_2))
@@ -47,9 +67,9 @@ def test_missing_get_messages():
     test_stream = ClientStream(1, 1)
     
     data_packet_1 = DataPacket(1,1,1, b'')
-    data_packet_2 = DataPacket(1,1,2, b'')
-    data_packet_3 = DataPacket(1,1,3, b'')
-    data_packet_4 = DataPacket(1,1,4, b'')
+    data_packet_2 = DataPacket(1,2,1, b'')
+    data_packet_3 = DataPacket(1,3,1, b'')
+    data_packet_4 = DataPacket(1,4,1, b'')
     
     test_stream.message_buffer_in.put((data_packet_2.packet_number, data_packet_2))
     test_stream.message_buffer_in.put((data_packet_3.packet_number, data_packet_3))
@@ -71,9 +91,9 @@ def test_missing_without_sleep_get_messages():
     test_stream = ClientStream(1, 1)
     
     data_packet_1 = DataPacket(1,1,1, b'')
-    data_packet_2 = DataPacket(1,1,2, b'')
-    data_packet_3 = DataPacket(1,1,3, b'')
-    data_packet_4 = DataPacket(1,1,4, b'')
+    data_packet_2 = DataPacket(1,2,1, b'')
+    data_packet_3 = DataPacket(1,3,1, b'')
+    data_packet_4 = DataPacket(1,4,1, b'')
     
     test_stream.message_buffer_in.put((data_packet_2.packet_number, data_packet_2))
     test_stream.message_buffer_in.put((data_packet_3.packet_number, data_packet_3))
@@ -102,8 +122,8 @@ def test_simple_get_all_messages():
     test_stream = ClientStream(1, 1)
     
     data_packets = [DataPacket(1,1,1, b''),
-                    DataPacket(1,1,2, b''), 
-                    DataPacket(1,1,3, b'')]
+                    DataPacket(1,2,1, b''), 
+                    DataPacket(1,3,1, b'')]
     
     for packet in data_packets:
         test_stream.message_buffer_in.put((packet.packet_number, packet))
@@ -115,8 +135,8 @@ def test_mixed_get_all_messages():
     test_stream = ClientStream(1, 1)
     
     data_packets = [DataPacket(1,1,1, b''), 
-                    DataPacket(1,1,3, b''), 
-                    DataPacket(1,1,4, b'')]
+                    DataPacket(1,3,1, b''), 
+                    DataPacket(1,4,1, b'')]
     
     for packet in data_packets:
         test_stream.message_buffer_in.put((packet.packet_number, packet))
@@ -128,7 +148,7 @@ def test_mixed_get_all_messages():
     messages = test_stream.get_all_messages()
     assert len(messages) == 0
 
-    missing_packet = DataPacket(1,1,2, b'')
+    missing_packet = DataPacket(1,2,1, b'')
     test_stream.message_buffer_in.put((missing_packet.packet_number, missing_packet))
 
     messages = test_stream.get_all_messages()
@@ -137,19 +157,39 @@ def test_mixed_get_all_messages():
     assert messages[1] == data_packets[1]
     assert messages[2] == data_packets[2]
 
+def test_request_retransmission():
+    test_stream = ClientStream(1,1)
+    test_stream._request_retransmission(1)
+    
+    assert type(test_stream.message_buffer_out[0]) is RetransmissionRequestPacket
+    assert test_stream.message_buffer_out[0].requested_packet_number == 1
+
+def test_process_control_packets_RetransmissionRequestPacket():
+    test_stream = ServerStream(1,1)
+    data_packet_1 = DataPacket(1,1,1,bytearray(b""))
+    data_packet_2 = DataPacket(1,1,1,bytearray(b""))
+    test_stream.data_packets.append(data_packet_1)
+    test_stream.data_packets.append(data_packet_2)
+    test_stream.put_packet(RetransmissionRequestPacket(1,1,1,1))
+    test_stream.put_packet(RetransmissionRequestPacket(1,2,1,2))
+    test_stream.process_control_packets()
+    test_stream.message_buffer_out[0] == data_packet_1
+    test_stream.message_buffer_out[1] == data_packet_2
+
 def test_put_data_server_stream_empty():
     test_stream = ServerStream(1, 1)
     test_stream.put_data(b'')
-    assert test_stream.data_packets == []
+    assert len(test_stream.data_packets) == 0
 
 def test_put_data_server_stream_without_padding():
     test_stream = ServerStream(1, 1)
-    test_stream.put_data(b'0'*96*4)
+    test_stream.put_data(b'0'*100*4)
     assert len(test_stream.data_packets) == 4
-    assert [elem.data for elem in test_stream.data_packets] == [b'0'*96 for _ in range(4)]
+    assert [elem.data for elem in test_stream.data_packets] == [bytearray(b'0'*100) for _ in range(4)]
 
 def test_put_data_server_stream_without_padding():
     test_stream = ServerStream(1, 1)
-    test_stream.put_data(b'0'*144)
+    test_stream.put_data(b'0'*150)
     assert len(test_stream.data_packets) == 2
-    assert [elem.data for elem in test_stream.data_packets] == [b'0'*96, b'0'*48]
+    assert test_stream.data_packets[0].data == bytearray(b'0'*100)
+    assert test_stream.data_packets[1].data == bytearray(b'0'*50 )

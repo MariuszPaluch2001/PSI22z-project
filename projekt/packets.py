@@ -94,8 +94,7 @@ class DataPacket(Packet):
 
         if (len(data) > 100):
             raise TooLongDataError()
-        n_pad_bytes = 100 - len(data)
-        self.data = data + n_pad_bytes * b'\x00'
+        self.data = data
 
     def to_binary(self) -> bytes:
         data = self.data

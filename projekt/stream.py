@@ -1,4 +1,4 @@
-import queue
+from queue import PriorityQueue, Empty
 from threading import Condition, Lock
 import io
 from packets import *
@@ -10,7 +10,7 @@ class Stream:
         self.stream_id = stream_id
         self.session_id = session_id
         self.logger = logger
-        self.message_buffer_in = queue.PriorityQueue()
+        self.message_buffer_in = PriorityQueue()
         self.message_buffer_out = []
 
         self.closed = False
@@ -32,6 +32,7 @@ class Stream:
 
     def put_packet(self, message : Packet):
         self.mutex_in.acquire()
+
         try:
             self.message_buffer_in.put((message.packet_number, message))
         finally:
@@ -46,6 +47,13 @@ class Stream:
 
         return packet
 
+    def put_packet_to_send(self,packet):
+        self.mutex_out.acquire()
+        try:
+            packet = self.message_buffer_out.append(packet)
+        finally:
+            self.mutex_out.release()
+
     def _put_packet(self, packet: Packet) -> None:
         if not self.closed:
             self.mutex_out.acquire()
@@ -56,13 +64,11 @@ class Stream:
 
     def _get_packet(self, timeout=None) -> Packet:
         if not self.closed:
-            self.mutex_in.acquire()
             try:
                 return self.message_buffer_in.get(block = True, timeout=timeout)[1]
-            except queue.Empty:
+            except Empty:
                 pass
-            finally:
-                self.mutex_in.release()
+
 
     def post(self, data):
         with self.condition:
@@ -128,9 +134,9 @@ class ClientStream(Stream):
     def _request_retransmission(self, packet_number):
         retransmission_packet = RetransmissionRequestPacket(
             self.session_id,
-            packet_number,
-            'o', #tutaj jest błędna dana - ona potem wyleci
-            self.stream_id
+            0,
+            self.stream_id,
+            self.data_packet_number
         )
         self._put_packet(retransmission_packet)
 
@@ -142,28 +148,33 @@ class ServerStream(Stream):
         self.data_packets = []
         self.data_packet_number_to_send = 1
 
+    def _process_one_control_packet(self, packet):
+        for data_packet in self.data_packets:
+            if data_packet.packet_number == packet.requested_packet_number:
+                self._put_packet(data_packet)
+
     def process_control_packets(self):
-        #tutaj obsługujesz 2 typy pakietów
-        #1. retransmisja - szukasz w data_packets, tego, czego brakuje
-        #2. zamknięcie - wywołujesz self.close() albo shutdown()
-        ...
+        packet = self._get_packet(0)
+        while (packet):
+            self._process_one_control_packet(packet)
+            packet = self._get_packet(0)
 
     def put_data(self, data : bytes) -> None:
         data_stream = io.BytesIO(data)
         while True:
-            data_chunk = data_stream.read(96)
-            
+            data_chunk = data_stream.read(100)
             if not data_chunk:
                 break
-            
-            self.data_packets.append(
-                DataPacket(
+            packet = DataPacket(
                     self.session_id,
-                    self.stream_id,
                     self.data_packet_number_to_send,
-                    data_chunk
+                    self.stream_id,
+                    bytearray(data_chunk)
                 )
+            self.data_packets.append(
+                packet
             )
+            self.put_packet_to_send(packet)
             self.data_packet_number_to_send  += 1
 
 

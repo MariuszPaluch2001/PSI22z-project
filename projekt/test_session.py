@@ -115,6 +115,7 @@ def test_monkeypatched_packet_receiving():
     packet = SessionControlPacket(1,2,'o')
     class DummySocket:
         def recvfrom(self, _): return (packet.to_binary(),)
+        def settimeout(self, idk): ...
     s = Session()
     dummy = DummySocket()
     s.socket = dummy
@@ -131,6 +132,7 @@ def test_monkeypatched_packet_receiving_without_opening():
     class DummySocket:
         def __init__(self): self.touched = False
         def recvfrom(self, _): self.touched = True
+        def settimeout(self, idk): ...
     s = Session()
     dummy = DummySocket()
     s.socket = dummy
@@ -271,6 +273,7 @@ def test_client_receive_data_packet():
     packet = DataPacket(1,1,1,b'abc')
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
+        def settimeout(self, idk): ...
     s = ClientSession()
     s.socket = DummySocket()
     s.is_open = True
@@ -279,15 +282,13 @@ def test_client_receive_data_packet():
     s.receive_packet()
     ret = stream._get_packet()
     assert isinstance(ret, DataPacket)
-    assert ret.session_id == 1
-    assert ret.packet_number == 1
-    assert ret.packet_number == 1
-    assert ret.data == b'abc'
+    assert ret.to_binary() == packet.to_binary()
 
 def test_client_receive_confirmation_packet():
-    packet = ConfirmationPacket(1,1,1,'a')
+    packet = ConfirmationPacket(1,1,1)
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
+        def settimeout(self, idk): ...
     s = ClientSession()
     s.socket = DummySocket()
     s.is_open = True
@@ -299,6 +300,7 @@ def test_client_receive_invalid_packet():
     packet = RetransmissionRequestPacket(1,1,1,1)
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
+        def settimeout(self, idk): ...
     s = ClientSession()
     s.socket = DummySocket()
     s.is_open = True
@@ -307,12 +309,13 @@ def test_client_receive_invalid_packet():
 
 def test_client_receive_multiple_packets():
     packets = [
-        ConfirmationPacket(1,1,1,'a'),
-        ConfirmationPacket(1,2,0,'a')
+        ConfirmationPacket(1,1,1),
+        ConfirmationPacket(1,2,0)
     ]
 
     class DummySocket:
         def recvfrom(self, idk): return (packets.pop().to_binary(), None)
+        def settimeout(self, idk): ...
     s = ClientSession()
     s.socket = DummySocket()
     s.is_open = True
@@ -336,7 +339,6 @@ def test_close_client_session():
     s.close()
 
     assert all(stream.is_closed() for stream in s.streams)
-    assert dummy.closed is True
     assert dummy.data == SessionControlPacket(1,1,'c').to_binary()
 
 
@@ -354,14 +356,74 @@ def test_shutdown_client_session():
     s.shutdown()
 
     assert all(stream.is_closed() for stream in s.streams)
-    assert dummy.closed is True
     assert dummy.data == SessionControlPacket(1,1,'s').to_binary()
 
 def test_create_server_session():
     ss = ServerSession()
 
+def test_open_socket():
+    SERVER_PORT = 9001
+    CLIENT_PORT = 9000
+    def dummy_client():
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.bind(("127.0.0.1", CLIENT_PORT))
+            s.connect(("127.0.0.1", SERVER_PORT))
+            s.send(SessionControlPacket(
+                2,
+                1,
+                'o'
+            ).to_binary())
+    s = ServerSession()
+    s.open_socket("127.0.0.1", SERVER_PORT)
+    thread = threading.Thread(target=dummy_client)
+    assert s.my_address == '127.0.0.1'
+    assert s.my_port == SERVER_PORT
+    thread.start()
+    data = s.socket.recvfrom(128)
+    packet_data = data[0]
+    packet = Parser().parse_packet(packet_data)
+    assert isinstance(packet, SessionControlPacket)
+    assert packet.session_id == 2
+    assert packet.packet_number == 1
+    assert packet.control_type == 'o'
+    thread.join()
+    s.close()
+
 def test_wait_for_connection():
-    ...
+    SERVER_PORT = 8021
+    CLIENT_PORT = 8022
+    confirm = None
+    def dummy_client():
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.bind(("127.0.0.1", CLIENT_PORT))
+            s.connect(("127.0.0.1", SERVER_PORT))
+            s.send(SessionControlPacket(
+                2,
+                1,
+                'o'
+            ).to_binary())
+            data = s.recvfrom(128)
+            packet_data = data[0]
+            nonlocal confirm
+            confirm = Parser().parse_packet(packet_data)
+
+    s = ServerSession()
+    s.open_socket("127.0.0.1", SERVER_PORT)
+    thread = threading.Thread(target=dummy_client)
+    assert s.my_address == '127.0.0.1'
+    assert s.my_port == SERVER_PORT
+    thread.start()
+
+    s.wait_for_connection()
+    thread.join()
+    assert s.is_open
+    assert s.host_address == '127.0.0.1'
+    assert s.host_port == CLIENT_PORT
+    assert s.session_id == 2
+    assert isinstance(confirm, ConfirmationPacket)
+    assert confirm.session_id == 2
+    assert confirm.packet_number == 1
+    s.close()
 
 def test_server_receive_session_closing_packet():
     packet = SessionControlPacket(1,1,'c')
@@ -369,6 +431,7 @@ def test_server_receive_session_closing_packet():
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
         def close(self): self.closed = True
+        def settimeout(self, idk): ...
     s = ServerSession()
     s.streams = [ ServerStream(1,1)]
     dummy = DummySocket()
@@ -377,8 +440,7 @@ def test_server_receive_session_closing_packet():
     s.session_id = 1
     s.receive_packet()
     assert s.streams[0].is_closed()
-    assert s.is_open is False
-    assert dummy.closed
+    assert s.is_closed is True
 
 
 def test_server_receive_session_shutting_packet():
@@ -387,6 +449,7 @@ def test_server_receive_session_shutting_packet():
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
         def close(self): self.closed = True
+        def settimeout(self, idk): ...
     s = ServerSession()
     s.streams = [ ServerStream(1,1)]
     dummy = DummySocket()
@@ -395,14 +458,14 @@ def test_server_receive_session_shutting_packet():
     s.session_id = 1
     s.receive_packet()
     assert s.streams[0].is_closed()
-    assert s.is_open is False
-    assert dummy.closed
+    assert s.is_closed
 
 def test_server_receive_session_opening_packet():
     packet = SessionControlPacket(1,1,'o')
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     s.streams = [ ServerStream(1,1)]
     dummy = DummySocket()
@@ -419,6 +482,7 @@ def test_server_receive_stream_opening_packet():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -434,6 +498,7 @@ def test_server_receive_stream_opening_packet_max_streams():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -448,6 +513,7 @@ def test_server_receive_stream_control_packet():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -465,6 +531,7 @@ def test_server_receive_retransmission_packet():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -481,6 +548,7 @@ def test_server_receive_invalid_packet():
     class DummySocket:
         def recvfrom(self, idk): return (packet.to_binary(), None)
         def send(self, data): pass
+        def settimeout(self, idk): ...
     s = ServerSession()
     dummy = DummySocket()
     s.socket = dummy
@@ -492,7 +560,22 @@ def test_server_receive_invalid_packet():
 
 
 def test_server_receive_multiple_packets():
-    ... 
+    packets = [StreamControlPacket(1,1,'o',1), StreamControlPacket(1,2,'o',2)]
+    class DummySocket:
+        def recvfrom(self, idk): return (packets.pop(0).to_binary(), None)
+        def send(self, data): pass
+        def settimeout(self, idk): ...
+    s = ServerSession()
+    dummy = DummySocket()
+    s.socket = dummy
+    s.is_open = True
+    s.session_id = 1
+    s.receive_packets(2)
+    assert len(s.streams) == 2
+    assert s.streams[0].new is True
+    assert s.streams[1].new is True
+    assert s.streams[0].stream_id == 1
+    assert s.streams[1].stream_id == 2
 
 
 def test_get_new_streams():
@@ -520,8 +603,7 @@ def test_close_server_session():
     s.socket = DummySocket()
     s.is_open = True
     s.close()
-    assert s.is_open is False
-    assert s.socket.closed is True
+    assert s.is_closed is True
     assert s.streams[0].is_closed() is True
 
 def test_shutdown_server_session():
@@ -535,10 +617,21 @@ def test_shutdown_server_session():
     s.socket = DummySocket()
     s.is_open = True
     s.shutdown()
-    assert s.is_open is False
-    assert s.socket.closed is True
+    assert s.is_closed is True
     assert s.streams[0].is_closed() is True
 
 
 def test_server_packet_confirmation():
-    ...
+    class DummySocket:
+        def send(self,data): self.data = data
+
+    s = ServerSession()
+    s.socket = DummySocket()
+    s.is_open = True
+    s.session_id = 2
+    s.confirm(2)
+    packet = Parser().parse_packet(s.socket.data)
+    assert isinstance(packet, ConfirmationPacket)
+    assert packet.session_id == s.session_id
+    assert packet.packet_number == 2
+    assert packet.stream_id == 0

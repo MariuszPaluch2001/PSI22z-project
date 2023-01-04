@@ -65,17 +65,21 @@ class Session:
             self.current_packet_number = self.current_packet_number + 1
             self.unconfirmed_packets.append([packet,datetime.now()])
 
-    def _receive_packet(self) -> Packet:
+    def _receive_packet(self, timeout=None) -> Packet:
+        self.socket.settimeout(timeout)
         if self.is_open:
-            data = self.socket.recvfrom(Session.BUFSIZE)
-            binary_data = data[0]
-            return self.parser.parse_packet(binary_data)
-    def send_packets(self) -> Stream:
+            try:
+                data = self.socket.recvfrom(Session.BUFSIZE)
+                binary_data = data[0]
+                return self.parser.parse_packet(binary_data)
+            except:
+                return 
+    def send_packets(self):
         self.resend_packets()
-        for stream in self.get_active_streams():
-            #@todo - it will be changed queue and mutexes!!
+        for stream in self.get_active_streams():            
             if len(stream.message_buffer_out) > 0:
-                self._send_packet(stream.message_buffer_out.pop(0))
+                packet = stream.get_packet()
+                self._send_packet(packet)
 
     def resend_packets(self) -> None:
         for packet_sent_pair in self.unconfirmed_packets:
@@ -91,20 +95,26 @@ class Session:
 
     def confirm_packet(self,packet_number: int) -> None:
         for i in range(len(self.unconfirmed_packets)):
-            if self.unconfirmed_packets[i][0].packet_number == packet_number:
+            unconfirmed = self.unconfirmed_packets[i]
+            if unconfirmed[0].packet_number == packet_number:
                 del self.unconfirmed_packets[i]
+                return
 
     def get_max_stream_id(self) -> int:
         return 0 if len(self.streams) == 0 else max(stream.stream_id for stream in self.streams)
 
-    def receive_packets(self, packet_count=10) -> None:
+    def receive_packets(self, packet_count=10,timeout=None) -> None:
         for _ in range(packet_count):
-            self.receive_packet()
-    
+            self.receive_packet(timeout)
+
+    def __del__(self):
+        if self.socket is not None:
+            self.socket.close() 
 class ClientSession(Session):
     def __init__(self) -> None:
         super().__init__()
 
+    #change to 2 functions maybe
     def connect(self, my_address: str, my_port: int,
      host_address: str, host_port: int, session_id: int = random.randint(0,32767)) -> None:
         self.session_id = session_id
@@ -121,6 +131,7 @@ class ClientSession(Session):
             'o'
         )
         self.is_open = True
+        self.is_closed = False
         self._send_control_packet(opening_packet)
 
 
@@ -135,12 +146,14 @@ class ClientSession(Session):
             stream_id
         )
         self._send_control_packet(stream_opening_packet)
-        stream = ClientStream(self.session_id, stream_id)  
+        stream = ClientStream(stream_id, self.session_id)  
         self.streams.append(stream)
         return stream      
     
-    def receive_packet(self) -> None:
-        packet = self._receive_packet()
+    def receive_packet(self,timeout=None) -> None:
+        packet = self._receive_packet(timeout)
+        if not packet:
+            return 
         if isinstance(packet, DataPacket):
             stream = self.get_stream(packet.stream_id)
             stream.post(packet)
@@ -160,8 +173,7 @@ class ClientSession(Session):
             close_type
         )
         self._send_control_packet(closing_packet)
-        self.socket.close()
-        self.is_open = False   
+        self.is_closed = True
 
     def close(self) -> None:
         self._close(lambda stream : stream.close(), 'c')
@@ -175,35 +187,40 @@ class ServerSession(Session):
         super().__init__()
 
     def confirm(self, packet_number:int) -> None:
-        #confirm jest imo źle
         confirmation_packet = ConfirmationPacket(
             self.session_id,
             packet_number,
             0,
-            'o',
         )
         self._send_packet(confirmation_packet)
 
-    def wait_for_connection(self, my_address: str, my_port: int) -> None:
+    def open_socket(self, my_address: str, my_port: int) -> None:
         self.my_address = my_address
         self.my_port = my_port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((my_address, my_port))
+
+    def wait_for_connection(self) -> None:
         correct = False
         while not correct:
             data = self.socket.recvfrom(Session.BUFSIZE)
             host_info = data[1]
             packet = self.parser.parse_packet(data[0])
             if isinstance(packet, SessionControlPacket) and packet.control_type == 'o':
+                self.session_id = packet.session_id
                 self.socket.connect(host_info)
+                self.is_open = True
+                self.is_closed = False
                 self.confirm(packet.packet_number)
                 self.host_address = host_info[0]
                 self.host_port = host_info[1]
                 correct = True
-        self.is_open = True
 
-    def receive_packet(self) -> None:
-        packet = self._receive_packet()
+
+    def receive_packet(self, timeout=None) -> None:
+        packet = self._receive_packet(timeout)
+        if not packet:
+            return
         if isinstance(packet, SessionControlPacket):
             if packet.control_type == 'c':
                 self.close()
@@ -239,8 +256,7 @@ class ServerSession(Session):
     def _close(self, stream_operation) -> None:
         for stream in self.get_active_streams():
             stream_operation(stream)
-        self.socket.close()
-        self.is_open = False   
+        self.is_closed = True
 
     def close(self) -> None:
         self._close(lambda stream : stream.close())
