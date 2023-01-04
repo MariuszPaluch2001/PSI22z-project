@@ -12,6 +12,7 @@ CLIENT_WORK = 120
 def stream_to_file(stream: ClientStream, filename: str, working_time: int):
     time = datetime.now()
     #strumień klienta pracuje dopóki nie minie założony czas lub nie zostanie zamknięty
+    print('Strumień klienta rozpoczyna działanie')
     def work():
         return not stream.is_closed() and (datetime.now() - time) < timedelta(seconds=working_time)
     f_text = open(filename, 'wb')
@@ -23,7 +24,7 @@ def stream_to_file(stream: ClientStream, filename: str, working_time: int):
             f_text.write(packet.data)
             f_stamped.write(str(packet.timestamp).encode('ascii'))
             f_stamped.write(packet.data)
-
+    print('Strumień klienta kończy działanie')
     f_text.close()
     f_stamped.close()
 
@@ -38,10 +39,13 @@ def client_dispatch(session: ClientSession):
         session.receive_packets(5,1)
         #klient rozsyła paczki kontrolne, niepotwierdzone paczki i paczki wzięte od strumieni
         session.send_packets()
+    print('Sesja klienta kończy pracę')
     session.close()
+    
     
 
 def file_to_stream(stream: ServerStream, filename: str):
+    print('Strumień serwera rozpoczyna pracę')
     with open(filename, "rb") as f:
         full_data = f.readlines()
         #praca aż do zamknięcia lub wykonania zadania
@@ -56,6 +60,7 @@ def file_to_stream(stream: ServerStream, filename: str):
             stream.put_data(data)
             #spanie do demonstracji działania znakowania czasowego
             time.sleep(1)
+    print('Strumień klienta kończy pracę')
 
 def server_dispatch(session: ServerSession):
     def work():
@@ -73,6 +78,7 @@ def server_dispatch(session: ServerSession):
             ), daemon=True).start()
         #serwer wysyła pakiety odebrane od strumieni oraz potwierdzenia paczek
         session.send_packets()
+    print('Sesja serwera kończy pracę')
 
 
 
@@ -81,7 +87,10 @@ def client_main():
     #klienta czeka na ustawienie serwera
     time.sleep(5)
     client = ClientSession()
+    print('Sesja klienta rozpoczęta - próba połączenia z serwerem')
     client.connect(CLIENT_ADDR, CLIENT_PORT, SERVER_ADDR, SERVER_PORT)
+    print('Klientowi udało się połączyć z serwerem')
+    #tworzymy wątki dla strumieni klienta - z różnym czasem życia
     threads = [
         threading.Thread(target=stream_to_file, args=(
             client.open_new_stream(),
@@ -95,6 +104,7 @@ def client_main():
     client_dispatch(client)
     for thread in threads:
         thread.join()
+    
 
 
 def server_main():
