@@ -109,8 +109,10 @@ def client_main():
 
 def server_main():
     server = ServerSession()
+    print('otwarcie sesji serwera - oczekiwanie na połaczenie')
     server.open_socket(SERVER_ADDR, SERVER_PORT)
     server.wait_for_connection()
+    print('sesja serwera otrzymała połączenie od klienta')
     server_dispatch(server)
     
 
