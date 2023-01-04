@@ -60,7 +60,7 @@ def file_to_stream(stream: ServerStream, filename: str):
             stream.put_data(data)
             #spanie do demonstracji działania znakowania czasowego
             time.sleep(1)
-    print('Strumień klienta kończy pracę')
+    print('Strumień serwera kończy pracę')
 
 def server_dispatch(session: ServerSession):
     def work():
