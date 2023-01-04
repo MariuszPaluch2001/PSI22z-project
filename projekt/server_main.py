@@ -12,7 +12,7 @@ CLIENT_WORK = 120
 def stream_to_file(stream: ClientStream, filename: str, working_time: int):
     time = datetime.now()
     #strumień klienta pracuje dopóki nie minie założony czas lub nie zostanie zamknięty
-    print('Strumień klienta rozpoczyna działanie')
+    print(f'Strumień klienta z id: {stream.stream_id} rozpoczyna działanie')
     def work():
         return not stream.is_closed() and (datetime.now() - time) < timedelta(seconds=working_time)
     f_text = open(filename, 'wb')
@@ -24,7 +24,7 @@ def stream_to_file(stream: ClientStream, filename: str, working_time: int):
             f_text.write(packet.data)
             f_stamped.write(str(packet.timestamp).encode('ascii'))
             f_stamped.write(packet.data)
-    print('Strumień klienta kończy działanie')
+    print(f'Strumień klienta z id: {stream.stream_id} kończy działanie')
     f_text.close()
     f_stamped.close()
 
@@ -45,7 +45,7 @@ def client_dispatch(session: ClientSession):
     
 
 def file_to_stream(stream: ServerStream, filename: str):
-    print('Strumień serwera rozpoczyna pracę')
+    print(f'Strumień serwera z id: {stream.stream_id} rozpoczyna pracę')
     with open(filename, "rb") as f:
         full_data = f.readlines()
         #praca aż do zamknięcia lub wykonania zadania
@@ -60,7 +60,7 @@ def file_to_stream(stream: ServerStream, filename: str):
             stream.put_data(data)
             #spanie do demonstracji działania znakowania czasowego
             time.sleep(1)
-    print('Strumień serwera kończy pracę')
+    print(f'Strumień serwera z id: {stream.stream_id} kończy pracę')
 
 def server_dispatch(session: ServerSession):
     def work():
