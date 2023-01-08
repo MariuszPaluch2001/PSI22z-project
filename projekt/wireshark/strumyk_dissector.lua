@@ -45,7 +45,7 @@ function strumyk_protocol.dissector(buffer, pinfo, tree)
   -- RetransmissionRequestPacket
   if packet_type_val == 3 then
     subtree:add_le(stream_id, buffer(12, 4))
-    subtree:add_le(requested_packet_number, buffer(14, 4))
+    subtree:add_le(requested_packet_number, buffer(16, 4))
   end
   -- ConfirmationPacket
   if packet_type_val == 4 then
@@ -56,8 +56,8 @@ function strumyk_protocol.dissector(buffer, pinfo, tree)
     subtree:add_le(stream_id, buffer(12, 4))
     subtree:add_le(timestamp, buffer(16, 4))
 
-    local data_length = length - 18
-    subtree:add_le(data, buffer(19, data_length - 1))
+    local data_length = length - 20
+    subtree:add_le(data, buffer(20, data_length))
   end
 end
 
