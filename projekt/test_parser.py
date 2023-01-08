@@ -159,10 +159,7 @@ def test_reading_non_existing_packet():
     bin_data = b'\x07\x00\x00\x00\x0b\x00\x00\x00\x14\x00\x00\x00'
     is_non_existing = False
 
-    try:
-        new_packet = parser_test.parse_packet(bin_data)
-    except Exception as e:
-        if str(e) == "Incorrect type of packet":
-            is_non_existing = True
+    new_packet = parser_test.parse_packet(bin_data)
 
-    assert is_non_existing
+    assert new_packet is None
+
