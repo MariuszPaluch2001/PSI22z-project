@@ -1,4 +1,4 @@
--- by Filip Leszek, Dominik Łopatecki
+-- STRumyk, Filip Leszek, Dominik Łopatecki, 08.01.2023
 
 -- copy to /wireshark/plugins/strumyk_dissector.lua
 local strumyk_protocol = Proto("STRumyk", "STRumyk Protocol")
