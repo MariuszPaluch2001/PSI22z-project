@@ -1,3 +1,5 @@
+# STRumyk, Dominik Łopatecki, 02.01.2023
+
 from Parser import Parser
 import packets
 import time
@@ -151,3 +153,16 @@ def test_reading_DataPacketUsingPacketObject():
     assert new_packet.stream_id == 10
     assert new_packet.timestamp == timestamp
     assert new_packet.data[:5] == b'hello'
+
+def test_reading_non_existing_packet():
+    parser_test = Parser()
+    bin_data = b'\x07\x00\x00\x00\x0b\x00\x00\x00\x14\x00\x00\x00'
+    is_non_existing = False
+
+    try:
+        new_packet = parser_test.parse_packet(bin_data)
+    except Exception as e:
+        if str(e) == "Incorrect type of packet":
+            is_non_existing = True
+
+    assert is_non_existing
