@@ -1,4 +1,7 @@
 *__pycache__
 .vscode
 .idea
-.pytest_cache
+.pytest_c
+*.txt
+projekt/wireshark/copy.sh
+
