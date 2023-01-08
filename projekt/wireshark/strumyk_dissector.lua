@@ -1,3 +1,5 @@
+-- by Filip Leszek, Dominik Łopatecki
+
 -- copy to /wireshark/plugins/strumyk_dissector.lua
 local strumyk_protocol = Proto("STRumyk", "STRumyk Protocol")
 
