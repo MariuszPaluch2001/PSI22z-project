@@ -15,13 +15,13 @@ def test_char_arr_to_bin():
 def test_get_stream_fmt_ConfirmationPacket():
     packet = ConfirmationPacket(1, 2, 1221)
     format = packet.get_struct_fmt()
-    assert format == "@hiii"
+    assert format == "@iiii"
 
 
 def test_get_stream_fmt_StreamControlPacket():
     packet = StreamControlPacket(1321, 2212, 'o', 12212)
     format = packet.get_struct_fmt()
-    assert format == "@hiici"
+    assert format == "@iiici"
 
 
 def test_to_binary_ConfirmationPacket():

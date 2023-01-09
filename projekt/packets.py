@@ -19,9 +19,7 @@ class Packet:
         format = "@"
 
         for key in fields_map.keys():
-            if key == "packet_type":
-                format += "h"
-            elif key == "control_type":
+            if key == "control_type":
                 format += "c"
             elif key == "data":
                 pass

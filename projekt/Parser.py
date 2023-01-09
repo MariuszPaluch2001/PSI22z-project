@@ -7,12 +7,12 @@ import packets
 
 class Parser:
     def __init__(self) -> None:
-        self.formats = {0: "@hii",
-                        1: "@hiic",
-                        2: "@hiici",
-                        3: "@hiiii",
-                        4: "@hiii",
-                        5: "@hiiii"}
+        self.formats = {0: "@iii",
+                        1: "@iiic",
+                        2: "@iiici",
+                        3: "@iiiii",
+                        4: "@iiii",
+                        5: "@iiiii"}
 
     def parse_packet(self, input_data) -> packets.Packet:
         try:
