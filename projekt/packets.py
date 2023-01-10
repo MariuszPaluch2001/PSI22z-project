@@ -1,4 +1,6 @@
-#by Filip Leszek
+# STRumyk, Filip Leszek, 03.01.2023
+# Plik zawiera klase Parser, posiadajaca funkcje parse_packet, ktora przetwarza otrzymany ciag danych binarnych
+# na obiekt klasy odpowieniego pakietu.
 
 from datetime import datetime
 import struct
