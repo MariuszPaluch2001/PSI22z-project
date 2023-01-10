@@ -79,7 +79,10 @@ class Session:
         for stream in self.get_active_streams():            
             if len(stream.message_buffer_out) > 0:
                 packet = stream.get_packet()
-                self._send_packet(packet)
+                if isinstance(packet, RetransmissionRequestPacket):
+                    self._send_control_packet(packet)
+                else:
+                    self._send_packet(packet)
 
     def resend_packets(self) -> None:
         for packet_sent_pair in self.unconfirmed_packets:
