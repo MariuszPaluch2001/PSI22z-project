@@ -60,8 +60,8 @@ class Session:
 
     def _send_control_packet(self, packet: SessionControlPacket) -> None:
         if self.is_open:
-            self._send_packet(packet)
             packet.packet_number = self.current_packet_number
+            self._send_packet(packet)
             self.current_packet_number = self.current_packet_number + 1
             self.unconfirmed_packets.append([packet,datetime.now()])
 
@@ -130,7 +130,7 @@ class ClientSession(Session):
         self.socket.connect((host_address, host_port))
         opening_packet = SessionControlPacket(
             self.session_id,
-            self.current_packet_number,
+            0,
             'o'
         )
         self.is_open = True
@@ -144,7 +144,7 @@ class ClientSession(Session):
         stream_id = self.get_max_stream_id() + 1
         stream_opening_packet = StreamControlPacket(
             self.session_id,
-            self.current_packet_number,
+            0,
             'o',
             stream_id
         )
@@ -172,7 +172,7 @@ class ClientSession(Session):
             stream_operation(stream)
         closing_packet = SessionControlPacket(
             self.session_id,
-            self.current_packet_number,
+            0,
             close_type
         )
         self._send_control_packet(closing_packet)
