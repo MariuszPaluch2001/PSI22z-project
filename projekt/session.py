@@ -89,7 +89,7 @@ class Session:
             sent = packet_sent_pair[1]
             packet = packet_sent_pair[0]
             if (datetime.now() - sent).total_seconds() >= Session.RESEND_AFTER_TIME:
-                self._send_packet(packet)
+                self._send_control_packet(packet)
                 packet_sent_pair[1] = datetime.now()
                       
 
