@@ -1,3 +1,7 @@
+# STRumyk, Filip Leszek, 03.01.2023
+# Plik zawiera klase Parser, posiadajaca funkcje parse_packet, ktora przetwarza otrzymany ciag danych binarnych
+# na obiekt klasy odpowieniego pakietu.
+
 from datetime import datetime
 import struct
 import time
@@ -17,9 +21,7 @@ class Packet:
         format = "@"
 
         for key in fields_map.keys():
-            if key == "packet_type":
-                format += "h"
-            elif key == "control_type":
+            if key == "control_type":
                 format += "c"
             elif key == "data":
                 pass
