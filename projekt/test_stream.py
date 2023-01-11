@@ -7,7 +7,7 @@ from packets import DataPacket, RetransmissionRequestPacket
 def test_put_packet_out_simple():
     test_stream = Stream(1, 1)
     data_packet = DataPacket(1,1,1, b'')
-    test_stream._put_packet(data_packet)
+    test_stream.send(data_packet)
     assert len(test_stream.message_buffer_out) == 1
     assert test_stream.message_buffer_out[0].packet_number == 1
 
@@ -15,12 +15,12 @@ def test_get_packet_in_simple():
     test_stream = Stream(1, 1)
     data_packet = DataPacket(1,1,1, b'')
     test_stream.message_buffer_in.put((data_packet.packet_number, data_packet))
-    assert test_stream._get_packet() == data_packet
+    assert test_stream._recv() == data_packet
 
 def test_put_packet_in_simple():
-    test_stream = Stream(1, 1)
+    test_stream = ClientStream(1, 1)
     data_packet = DataPacket(1,1,1, b'')
-    test_stream.put_packet(data_packet)
+    test_stream.upload_packet(data_packet)
     assert test_stream.message_buffer_in.get()[1] == data_packet
 
 def test_get_packet_out_simple():
@@ -30,20 +30,20 @@ def test_get_packet_out_simple():
     assert test_stream.get_packet() == data_packet
 
 def test_mutex_in_sync():
-    test_stream = Stream(1, 1)
+    test_stream = ClientStream(1, 1)
     data_packet_1 = DataPacket(1,1,1, b'')
     def writer():
-        test_stream.put_packet(data_packet_1)
+        test_stream.upload_packet(data_packet_1)
     
     thread = Thread(target=writer)
     thread.start()
-    assert test_stream._get_packet(1) == data_packet_1 
+    assert test_stream._recv(1) == data_packet_1 
 
 def test_mutex_out_sync():
     test_stream = Stream(1, 1)
     data_packet_1 = DataPacket(1,1,1, b'')
     def writer():
-        test_stream._put_packet(data_packet_1)
+        test_stream.send(data_packet_1)
     
     thread = Thread(target=writer)
     thread.start()
@@ -170,8 +170,8 @@ def test_process_control_packets_RetransmissionRequestPacket():
     data_packet_2 = DataPacket(1,1,1,bytearray(b""))
     test_stream.data_packets.append(data_packet_1)
     test_stream.data_packets.append(data_packet_2)
-    test_stream.put_packet(RetransmissionRequestPacket(1,1,1,1))
-    test_stream.put_packet(RetransmissionRequestPacket(1,2,1,2))
+    test_stream.upload_packet(RetransmissionRequestPacket(1,1,1,1))
+    test_stream.upload_packet(RetransmissionRequestPacket(1,2,1,2))
     test_stream.process_control_packets()
     test_stream.message_buffer_out[0] == data_packet_1
     test_stream.message_buffer_out[1] == data_packet_2
@@ -192,4 +192,13 @@ def test_put_data_server_stream_without_padding():
     test_stream.put_data(b'0'*150)
     assert len(test_stream.data_packets) == 2
     assert test_stream.data_packets[0].data == bytearray(b'0'*100)
-    assert test_stream.data_packets[1].data == bytearray(b'0'*50 )
+    assert test_stream.data_packets[1].data == bytearray(b'0'*50)
+
+def test_retransmission():
+    serv = ServerStream(1,1)
+    client = ClientStream(1,1)
+    data_packets = [DataPacket(1, i, 1, bytearray()) for i in range(8)]
+    serv.data_packets = data_packets
+    for i, packet in enumerate(data_packets):
+        if i % 2:
+            ...

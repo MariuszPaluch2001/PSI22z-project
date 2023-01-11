@@ -85,7 +85,9 @@ class Session:
                     self._send_packet(packet)
 
     def resend_packets(self) -> None:
-        for packet_sent_pair in self.unconfirmed_packets:
+        unconfirmed = self.unconfirmed_packets
+        self.unconfirmed_packets = []
+        for packet_sent_pair in unconfirmed:
             sent = packet_sent_pair[1]
             packet = packet_sent_pair[0]
             if (datetime.now() - sent).total_seconds() >= Session.RESEND_AFTER_TIME:
@@ -158,6 +160,7 @@ class ClientSession(Session):
         if not packet:
             return 
         if isinstance(packet, DataPacket):
+            print(f"!!!!!!!!!!!!Putting packet number = {packet.packet_number}")
             stream = self.get_stream(packet.stream_id)
             stream.post(packet)
         elif isinstance(packet, ConfirmationPacket):

@@ -183,8 +183,12 @@ def test_send_packets_function():
 
     s.send_packets()
     assert len(dummy.data) == 2
-    assert dummy.data[0] == Packet(1,2).to_binary()
-    assert dummy.data[1] == Packet(1,3).to_binary()
+    pack1 = Parser().parse_packet(dummy.data[0])
+    pack2 = Parser().parse_packet(dummy.data[1])
+    assert pack1.session_id == 1
+    assert pack1.packet_number == 1
+    assert pack2.session_id == 1
+    assert pack2.packet_number == 3
     
 def test_close_stream():
     s = Session()
@@ -280,7 +284,7 @@ def test_client_receive_data_packet():
     stream = ClientStream(1,1)
     s.streams.append(stream)
     s.receive_packet()
-    ret = stream._get_packet()
+    ret = stream._recv()
     assert isinstance(ret, DataPacket)
     assert ret.to_binary() == packet.to_binary()
 
@@ -539,7 +543,7 @@ def test_server_receive_retransmission_packet():
     s.session_id = 1
     s.streams = [ServerStream(1,i) for i in range(1,9)]
     s.receive_packet() 
-    ret = s.get_stream(1)._get_packet()
+    ret = s.get_stream(1)._recv()
     assert ret.to_binary() == packet.to_binary()
     
 

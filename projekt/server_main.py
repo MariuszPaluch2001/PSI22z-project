@@ -50,14 +50,15 @@ def file_to_stream(stream: ServerStream, filename: str):
         full_data = f.readlines()
         #praca aż do zamknięcia lub wykonania zadania
         def work():
-            return not stream.is_closed() and len(full_data) > 0
+            return not stream.is_closed() 
         
         while work():
             #strumień serwera procesuje paczki kontrolne
             stream.process_control_packets()
             #strumień serwera wysyła porcję danych
-            data = full_data.pop(0)
-            stream.put_data(data)
+            if len(full_data) > 0:
+                data = full_data.pop(0)
+                stream.put_data(data)
             #spanie do demonstracji działania znakowania czasowego
             time.sleep(1)
     print(f'Strumień serwera z id: {stream.stream_id} kończy pracę')
@@ -85,7 +86,7 @@ def server_dispatch(session: ServerSession):
 
 def client_main():
     #klienta czeka na ustawienie serwera
-    time.sleep(5)
+    time.sleep(1)
     client = ClientSession()
     print('Sesja klienta rozpoczęta - próba połączenia z serwerem')
     client.connect(CLIENT_ADDR, CLIENT_PORT, SERVER_ADDR, SERVER_PORT)
@@ -97,7 +98,7 @@ def client_main():
             'worker' + str(i) + '.txt', 
             random.randint(CLIENT_WORK-40, CLIENT_WORK+40)
         ))
-        for i in range(1,9)
+        for i in range(1,8)
     ]
     for thread in threads:
         thread.start()
