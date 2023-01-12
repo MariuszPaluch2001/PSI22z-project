@@ -781,7 +781,7 @@ def test_server_receive_packet_wrong_session_id():
 
     class DummySocket:
         def __init__(self): self.touched = False
-        def recvfrom(self, _): return packet.to_binary()
+        def recvfrom(self, _): return (packet.to_binary(),)
         def settimeout(self, idk): ...
         def close(self): self.closed = True
     s = ServerSession()
@@ -792,4 +792,16 @@ def test_server_receive_packet_wrong_session_id():
         s.receive_packet()
 
 def test_client_receive_packet_wrong_session_id():
-    ...
+    packet = SessionControlPacket(2, 2, 'o')
+
+    class DummySocket:
+        def __init__(self): self.touched = False
+        def recvfrom(self, _): return (packet.to_binary(),)
+        def settimeout(self, idk): ...
+        def close(self): self.closed = True
+    s = ClientSession()
+    s.session_id = 1
+    s._open = True
+    s._socket = DummySocket()
+    with pytest.raises(InvalidSessionID):
+        s.receive_packet()
