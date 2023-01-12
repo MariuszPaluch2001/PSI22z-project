@@ -89,10 +89,7 @@ class Session:
         for stream in self.get_active_streams():
             if len(stream.message_buffer_out) > 0:
                 packet = stream.get_packet()
-                if isinstance(packet, RetransmissionRequestPacket):
-                    self._send_control_packet(packet)
-                else:
-                    self._send_packet(packet)
+                self._do_send(packet)
                 time.sleep(Session.TIME_BETWEEN_PACKETS)
 
     def resend_packets(self) -> None:
@@ -133,6 +130,8 @@ class Session:
     def is_closing(self):
         return self.closing_procedure
 
+    def _do_send(self, packet : Packet):
+        raise NotImplementedError
 
 class ClientSession(Session):
     def __init__(self) -> None:
@@ -207,6 +206,8 @@ class ClientSession(Session):
     def shutdown(self) -> None:
         self._close(lambda stream: stream.shutdown(), 's')
 
+    def _do_send(self, packet : Packet):
+        self._send_control_packet(packet)
 
 class ServerSession(Session):
     def __init__(self) -> None:
@@ -291,3 +292,6 @@ class ServerSession(Session):
 
     def shutdown(self) -> None:
         self._close(lambda stream: stream.shutdown())
+
+    def _do_send(self, packet : Packet):
+        self._send_packet(packet)

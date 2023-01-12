@@ -183,31 +183,14 @@ def test_monkeypatched_resend_packets():
 
 
 def test_send_packets_function():
-    class DummySocket:
-        def __init__(self): self.data = []
-        def send(self, data): self.data.append(data)
-        def close(self): self.closed = True
     s = Session()
-    dummy = DummySocket()
-    s._socket = dummy
     s._open = True
-    s._unconfirmed_packets = [
-        [Packet(1, 2), datetime.now() - timedelta(seconds=5)],
-    ]
     stream1 = Stream(1, 1)
-    stream2 = Stream(1, 2)
-    s.streams.append(stream1)
-    s.streams.append(stream2)
     stream1.message_buffer_out.append(Packet(1, 3))
+    s.streams.append(stream1)
+    with pytest.raises(NotImplementedError):
+        s.send_packets()
 
-    s.send_packets()
-    assert len(dummy.data) == 2
-    pack1 = Parser().parse_packet(dummy.data[0])
-    pack2 = Parser().parse_packet(dummy.data[1])
-    assert pack1.session_id == 1
-    assert pack1.packet_number == 1
-    assert pack2.session_id == 1
-    assert pack2.packet_number == 3
 
 
 def test_close_stream():
@@ -267,7 +250,6 @@ def test_connection():
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             nonlocal check
             s.bind(('127.0.0.1', 8060))
-            time.sleep(1)
             data = s.recvfrom(128)
             check = (data[0] == SessionControlPacket(1, 1, 'o').to_binary())
 
@@ -275,6 +257,7 @@ def test_connection():
     s = ClientSession()
     s.open_socket("127.0.0.1", 8061, 1)
     thread.start()
+    time.sleep(1)
     s.connect("127.0.0.1", 8060)
     assert s.is_open()
     thread.join()
@@ -720,3 +703,93 @@ def test_server_packet_confirmation():
     assert packet.session_id == s.session_id
     assert packet.packet_number == 2
     assert packet.stream_id == 0
+
+def test_session_receive_packet_timeout():
+    s = ClientSession()
+    s.open_socket("127.0.0.1", 9000)
+    s._open = True
+    assert s._receive_packet(1) is None
+
+
+def test_server_send_packets():
+    class DummySocket:
+        def __init__(self): self.data = []
+        def send(self, data): self.data.append(data)
+        def close(self): self.closed = True
+    s = ServerSession()
+    dummy = DummySocket()
+    s._socket = dummy
+    s._open = True
+    s._unconfirmed_packets = [
+        [Packet(1, 2), datetime.now() - timedelta(seconds=5)],
+    ]
+    stream1 = Stream(1, 1)
+    stream2 = Stream(1, 2)
+    s.streams.append(stream1)
+    s.streams.append(stream2)
+    stream1.message_buffer_out.append(Packet(1, 3))
+
+    s.send_packets()
+    assert len(dummy.data) == 2
+    pack1 = Parser().parse_packet(dummy.data[0])
+    pack2 = Parser().parse_packet(dummy.data[1])
+    assert pack1.session_id == 1
+    assert pack1.packet_number == 1
+    assert pack2.session_id == 1
+    assert pack2.packet_number == 3
+
+def test_client_send_packets():
+    class DummySocket:
+        def __init__(self): self.data = []
+        def send(self, data): self.data.append(data)
+        def close(self): self.closed = True
+    s = ClientSession()
+    dummy = DummySocket()
+    s._socket = dummy
+    s._open = True
+    s._unconfirmed_packets = [
+        [Packet(1, 2), datetime.now() - timedelta(seconds=5)],
+    ]
+    stream1 = Stream(1, 1)
+    stream2 = Stream(1, 2)
+    s.streams.append(stream1)
+    s.streams.append(stream2)
+    stream1.message_buffer_out.append(Packet(1, 3))
+
+    s.send_packets()
+    assert len(dummy.data) == 2
+    pack1 = Parser().parse_packet(dummy.data[0])
+    pack2 = Parser().parse_packet(dummy.data[1])
+    assert pack1.session_id == 1
+    assert pack1.packet_number == 1
+    assert pack2.session_id == 1
+    assert pack2.packet_number == 2
+    assert len(s._unconfirmed_packets) == 2
+
+def test_server_receive_packet_with_timeout():
+    s = ServerSession()
+    s.open_socket("127.0.0.1", 8000)
+    assert s.receive_packet(1) is None
+
+def test_client_receive_packet_with_timeout():
+    s = ClientSession()
+    s.open_socket("127.0.0.1", 8000)
+    assert s.receive_packet(1) is None
+
+def test_server_receive_packet_wrong_session_id():
+    packet = SessionControlPacket(2, 2, 'o')
+
+    class DummySocket:
+        def __init__(self): self.touched = False
+        def recvfrom(self, _): return packet.to_binary()
+        def settimeout(self, idk): ...
+        def close(self): self.closed = True
+    s = ServerSession()
+    s.session_id = 1
+    s._open = True
+    s._socket = DummySocket()
+    with pytest.raises(InvalidSessionID):
+        s.receive_packet()
+
+def test_client_receive_packet_wrong_session_id():
+    ...
