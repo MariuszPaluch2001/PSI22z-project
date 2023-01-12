@@ -3,6 +3,7 @@ import time
 
 from stream import Stream, ClientStream, ServerStream
 from packets import DataPacket, RetransmissionRequestPacket
+from session import ServerSession, ClientSession
 import pytest
 
 def test_put_packet_out_simple():
@@ -232,10 +233,25 @@ def test_put_data_server_stream_with_padding():
 
 
 def test_retransmission():
-    serv = ServerStream(1, 1)
-    client = ClientStream(1, 1)
-    data_packets = [DataPacket(1, i, 1, bytearray()) for i in range(8)]
-    serv.data_packets = data_packets
-    for i, packet in enumerate(data_packets):
-        if i % 2:
-            ...
+    serv_stream = ServerStream(1, 1)
+    serv_stream.data_packets = [DataPacket(1, 1, 1, bytearray())]
+
+
+    packet = RetransmissionRequestPacket(1, 1, 1, 1)
+
+    class DummySocket:
+        def recvfrom(self, idk): return (packet.to_binary(), None)
+        def send(self, data): pass
+        def settimeout(self, idk): ...
+        def close(self): self.closed = True
+
+    s = ServerSession()
+    dummy = DummySocket()
+    s.streams.append(serv_stream)
+    s._socket = dummy
+    s._open = True
+    s.session_id = 1
+    s.receive_packet()
+    serv_stream.process_control_packets()
+    data_packet = serv_stream.message_buffer_out[0]
+    assert data_packet is serv_stream.data_packets[0]
