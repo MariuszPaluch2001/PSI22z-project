@@ -80,7 +80,10 @@ class Session:
         Realizuje wysyłanie pakietu przez gniazdo
         '''
         if self._open:
-            self._socket.send(packet.to_binary())
+            try:
+                self._socket.send(packet.to_binary())
+            except:
+                pass
 
     def _send_control_packet(self, packet: SessionControlPacket) -> None:
         '''
