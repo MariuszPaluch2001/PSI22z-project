@@ -182,12 +182,6 @@ class Session:
     def _do_send(self, packet : Packet):
         raise NotImplementedError
 
-    def close(self) -> None:
-        self._close(lambda stream: stream.close(), 'c')
-
-    def shutdown(self) -> None:
-        self._close(lambda stream: stream.shutdown(), 's')
-
 class ClientSession(Session):
     def __init__(self) -> None:
         super().__init__()
@@ -285,6 +279,13 @@ class ClientSession(Session):
         Klient wysyła tylko pakiety kontrolne
         '''
         self._send_control_packet(packet)
+
+    def close(self) -> None:
+        self._close(lambda stream: stream.close(), 'c')
+
+    def shutdown(self) -> None:
+        self._close(lambda stream: stream.shutdown(), 's')
+
 
 class ServerSession(Session):
     def __init__(self) -> None:
@@ -384,9 +385,18 @@ class ServerSession(Session):
         return streams
 
     def _close(self, stream_operation) -> None:
+        '''
+        Wywołuje zadaną operację zamykania na wszystkich strumieniach
+        '''
         for stream in self.get_active_streams():
             stream_operation(stream)
         self.closing_procedure = True
 
     def _do_send(self, packet : Packet):
         self._send_packet(packet)
+
+    def close(self) -> None:
+        self._close(lambda stream: stream.close())
+
+    def shutdown(self) -> None:
+        self._close(lambda stream: stream.shutdown())
