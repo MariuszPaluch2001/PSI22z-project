@@ -187,7 +187,7 @@ def test_put_data_server_stream_without_padding():
     assert len(test_stream.data_packets) == 4
     assert [elem.data for elem in test_stream.data_packets] == [bytearray(b'0'*100) for _ in range(4)]
 
-def test_put_data_server_stream_without_padding():
+def test_put_data_server_stream_with_padding():
     test_stream = ServerStream(1, 1)
     test_stream.put_data(b'0'*150)
     assert len(test_stream.data_packets) == 2

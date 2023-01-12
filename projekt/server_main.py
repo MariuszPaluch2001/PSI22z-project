@@ -89,7 +89,8 @@ def client_main():
     time.sleep(1)
     client = ClientSession()
     print('Sesja klienta rozpoczęta - próba połączenia z serwerem')
-    client.connect(CLIENT_ADDR, CLIENT_PORT, SERVER_ADDR, SERVER_PORT)
+    client.open_new_stream(CLIENT_ADDR, CLIENT_PORT)
+    client.connect(SERVER_ADDR, SERVER_PORT)
     print('Klientowi udało się połączyć z serwerem')
     #tworzymy wątki dla strumieni klienta - z różnym czasem życia
     threads = [
