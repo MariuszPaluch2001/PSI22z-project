@@ -92,7 +92,8 @@ class DataPacket(Packet):
 
         if timestamp is None:
             self.timestamp = int(time.mktime(datetime.now().timetuple()))
-        else: self.timestamp = timestamp
+        else:
+            self.timestamp = timestamp
 
         if (len(data) > 100):
             raise TooLongDataError()

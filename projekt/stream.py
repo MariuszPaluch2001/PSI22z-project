@@ -112,7 +112,7 @@ class Stream:
             except Empty:
                 pass
 
-    def post(self, packet : Packet):
+    def post(self, packet: Packet):
         """
             Funkcja wołana z zewnątrz, aby dołożyć odebrany komunikat do kolejki wejściowej.
             Dla kienta to będą komunikaty DataPacket, a dla serwera StreamControlPacket i
@@ -129,21 +129,21 @@ class ClientStream(Stream):
     def __init__(self, stream_id, session_id) -> None:
         super().__init__(session_id, stream_id)
 
-    def _upload_packet(self, packet : DataPacket):
+    def _upload_packet(self, packet: DataPacket):
         if self.logger is not None:
             self.logger.write_packet_log("client_upload_packet", packet)
 
-        #sprawdzanie czy już nie przetworzyliśmy tego komunikatu
+        # sprawdzanie czy już nie przetworzyliśmy tego komunikatu
         if self.data_packet_number <= packet.packet_number:
-            #sprawdza czy taki pakiet nie jest już w buforze
+            # sprawdza czy taki pakiet nie jest już w buforze
             if packet.packet_number not in map(lambda x: x[0], self.message_buffer_in.queue):
                 self.message_buffer_in.put(
                     (packet.packet_number, packet))
 
-            #odebrano komunikat na który czeka wątek klienta
+            # odebrano komunikat na który czeka wątek klienta
             if self.data_packet_number == packet.packet_number:
-                return True 
-        
+                return True
+
         return False
 
     def get_message(self, timeout=None) -> DataPacket:
@@ -160,7 +160,7 @@ class ClientStream(Stream):
             if self.logger is not None:
                 self.logger.write_log("get_message", f'Client received message with packet number '
                                       f'{message.packet_number} waiting for packet {self.data_packet_number}')
-            self.upload_packet(message) #odkładanie wiadomości do kolejki
+            self.upload_packet(message)  # odkładanie wiadomości do kolejki
             self._request_retransmission(self.data_packet_number)
 
             with self.condition:
@@ -184,7 +184,8 @@ class ClientStream(Stream):
                 messages.append(message)
                 next += 1
             else:
-                self.upload_packet(message) # odkładanie wiadomości o niewłaściwym numerze
+                # odkładanie wiadomości o niewłaściwym numerze
+                self.upload_packet(message)
                 self.data_packet_number = next
                 break
 
@@ -212,7 +213,7 @@ class ClientStream(Stream):
     def _request_retransmission(self, packet_number):
         retransmission_packet = RetransmissionRequestPacket(
             self.session_id,
-            0, # pole uzupełniane przez session
+            0,  # pole uzupełniane przez session
             self.stream_id,
             packet_number
         )
@@ -226,7 +227,7 @@ class ServerStream(Stream):
         self.data_packets = []
         self.data_packet_number_to_send = 1
 
-    def _upload_packet(self, packet : RetransmissionRequestPacket):
+    def _upload_packet(self, packet: RetransmissionRequestPacket):
         """
             Funkcja implementująca upload_packet dla serwera.
             Otrzymuje ona zawsze prośbę o retransmisję. Nie ma ryzyka
@@ -235,12 +236,12 @@ class ServerStream(Stream):
         """
         if self.logger is not None:
             self.logger.write_packet_log("server_upload_packet", packet)
-        
+
         self.message_buffer_in.put(
-                    (packet.packet_number, packet))
+            (packet.packet_number, packet))
         return True
-        
-    def _process_one_control_packet(self, packet : RetransmissionRequestPacket):
+
+    def _process_one_control_packet(self, packet: RetransmissionRequestPacket):
         """
             Funkcja szukająca w buforze pakietu o takim samym numerze
             jak w retransmisji.
@@ -278,7 +279,7 @@ class ServerStream(Stream):
                 packet
             )
 
-            if self.data_packet_number_to_send % 2 == 1: #ACHTUNG! tylko do testów. Potem wywalić
+            if self.data_packet_number_to_send % 2 == 1:  # ACHTUNG! tylko do testów. Potem wywalić
                 self.send(packet)
 
             self.data_packet_number_to_send += 1

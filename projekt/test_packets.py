@@ -50,6 +50,7 @@ def test_too_long_data():
     with pytest.raises(TooLongDataError):
         packet = DataPacket(1, 2, 3, 101 * "a")
 
+
 def test_wrong_control_type():
     with pytest.raises(TypeError):
-        packet = ControlPacket(1,1,'a')
+        packet = ControlPacket(1, 1, 'a')

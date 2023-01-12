@@ -5,6 +5,7 @@
 import struct
 import packets
 
+
 class Parser:
     def __init__(self) -> None:
         self.formats = {0: "@iii",
