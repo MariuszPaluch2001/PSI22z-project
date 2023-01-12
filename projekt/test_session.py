@@ -805,3 +805,8 @@ def test_client_receive_packet_wrong_session_id():
     s._socket = DummySocket()
     with pytest.raises(InvalidSessionID):
         s.receive_packet()
+
+def test_invalid_socket_send():
+    s = Session()
+    s._open = True
+    s._send_packet(Packet(1,2))
