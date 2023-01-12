@@ -14,7 +14,7 @@ def test_create_session():
     assert s._socket is None
     assert s._current_packet_number == 1
     assert len(s._unconfirmed_packets) == 0
-    assert s.is_open is False
+    assert s.is_open() is False
 
 
 def test_stream_count():
@@ -69,7 +69,7 @@ def test_monkeypatched_packet_sending():
     s = Session()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     packet = SessionControlPacket(1, 2, 'o')
     s._send_packet(packet)
     assert dummy.data == packet.to_binary()
@@ -96,7 +96,7 @@ def test_monkeypatched_control_packet_sending():
     s = Session()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     last_current = s._current_packet_number
     packet = SessionControlPacket(1, last_current, 'o')
     s._send_control_packet(packet)
@@ -133,7 +133,7 @@ def test_monkeypatched_packet_receiving():
     s = Session()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     ret = s._receive_packet()
     assert isinstance(ret, SessionControlPacket)
     assert ret.session_id == 1
@@ -165,7 +165,7 @@ def test_monkeypatched_resend_packets():
     s = Session()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     unconfirmed = [
         [Packet(1, 2), datetime.now()],
         [Packet(1, 3), datetime.now()]
@@ -190,7 +190,7 @@ def test_send_packets_function():
     s = Session()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s._unconfirmed_packets = [
         [Packet(1, 2), datetime.now() - timedelta(seconds=5)],
     ]
@@ -276,7 +276,7 @@ def test_connection():
     s.open_socket("127.0.0.1", 8061, 1)
     thread.start()
     s.connect("127.0.0.1", 8060)
-    assert s.is_open
+    assert s.is_open()
     thread.join()
     s.close()
     assert check
@@ -290,7 +290,7 @@ def test_open_new_stream():
     s = ClientSession()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     ret = s.open_new_stream()
     assert isinstance(ret, ClientStream)
@@ -314,7 +314,7 @@ def test_client_receive_data_packet():
         def close(self): self.closed = True
     s = ClientSession()
     s._socket = DummySocket()
-    s.is_open = True
+    s._open = True
     stream = ClientStream(1, 1)
     s.streams.append(stream)
     s.session_id = 1
@@ -333,7 +333,7 @@ def test_client_receive_confirmation_packet():
         def close(self): self.closed = True
     s = ClientSession()
     s._socket = DummySocket()
-    s.is_open = True
+    s._open = True
     s._unconfirmed_packets.append([Packet(1, 1), datetime.now()])
     s.session_id = 1
     s.receive_packet()
@@ -349,7 +349,7 @@ def test_client_receive_invalid_packet():
         def close(self): self.closed = True
     s = ClientSession()
     s._socket = DummySocket()
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     with pytest.raises(InvalidPacket):
         s.receive_packet()
@@ -367,7 +367,7 @@ def test_client_receive_multiple_packets():
         def close(self): self.closed = True
     s = ClientSession()
     s._socket = DummySocket()
-    s.is_open = True
+    s._open = True
     s._unconfirmed_packets.append([Packet(1, 1), datetime.now()])
     s._unconfirmed_packets.append([Packet(1, 2), datetime.now()])
     s.session_id = 1
@@ -383,7 +383,7 @@ def test_close_client_session():
     s.streams = [ClientStream(1, 1)]
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
 
     s.close()
@@ -400,7 +400,7 @@ def test_shutdown_client_session():
     s.streams = [ClientStream(1, 1)]
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
 
     s.shutdown()
@@ -470,7 +470,7 @@ def test_wait_for_connection():
     thread.start()
     s.wait_for_connection()
     thread.join()
-    assert s.is_open
+    assert s.is_open()
     assert s.host_address == '127.0.0.1'
     assert s.host_port == CLIENT_PORT
     assert s.session_id == 2
@@ -499,11 +499,11 @@ def test_server_receive_session_closing_packet():
     s.streams = [ServerStream(1, 1)]
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.receive_packet()
     assert s.streams[0].is_closed()
-    assert s.is_closed is True
+    assert s.is_closing() is True
 
 
 def test_server_receive_session_shutting_packet():
@@ -518,11 +518,11 @@ def test_server_receive_session_shutting_packet():
     s.streams = [ServerStream(1, 1)]
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.receive_packet()
     assert s.streams[0].is_closed()
-    assert s.is_closed
+    assert s.is_closing()
 
 
 def test_server_receive_session_opening_packet():
@@ -537,11 +537,11 @@ def test_server_receive_session_opening_packet():
     s.streams = [ServerStream(1, 1)]
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.receive_packet()
     assert s.streams[0].is_closed() is False
-    assert s.is_open is True
+    assert s.is_open() is True
 
 
 def test_server_receive_stream_opening_packet():
@@ -555,7 +555,7 @@ def test_server_receive_stream_opening_packet():
     s = ServerSession()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.receive_packet()
     assert len(s.streams) == 1
@@ -573,7 +573,7 @@ def test_server_receive_stream_opening_packet_max_streams():
     s = ServerSession()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.streams = [ServerStream(1, i) for i in range(1, 9)]
     s.receive_packet()
@@ -591,7 +591,7 @@ def test_server_receive_stream_control_packet():
     s = ServerSession()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.streams = [ServerStream(1, i) for i in range(1, 9)]
     assert len(list(s.get_active_streams())) == 8
@@ -612,7 +612,7 @@ def test_server_receive_retransmission_packet():
     s = ServerSession()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.streams = [ServerStream(1, i) for i in range(1, 9)]
     s.receive_packet()
@@ -631,7 +631,7 @@ def test_server_receive_invalid_packet():
     s = ServerSession()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.streams = [ServerStream(1, i) for i in range(1, 9)]
     with pytest.raises(InvalidPacket):
@@ -650,7 +650,7 @@ def test_server_receive_multiple_packets():
     s = ServerSession()
     dummy = DummySocket()
     s._socket = dummy
-    s.is_open = True
+    s._open = True
     s.session_id = 1
     s.receive_packets(2)
     assert len(s.streams) == 2
@@ -684,9 +684,9 @@ def test_close_server_session():
     s = ServerSession()
     s.streams.append(ServerStream(1, 1))
     s._socket = DummySocket()
-    s.is_open = True
+    s._open = True
     s.close()
-    assert s.is_closed is True
+    assert s.is_closing() is True
     assert s.streams[0].is_closed() is True
 
 
@@ -699,9 +699,9 @@ def test_shutdown_server_session():
     s = ServerSession()
     s.streams.append(ServerStream(1, 1))
     s._socket = DummySocket()
-    s.is_open = True
+    s._open = True
     s.shutdown()
-    assert s.is_closed is True
+    assert s.is_closing() is True
     assert s.streams[0].is_closed() is True
 
 
@@ -712,7 +712,7 @@ def test_server_packet_confirmation():
 
     s = ServerSession()
     s._socket = DummySocket()
-    s.is_open = True
+    s._open = True
     s.session_id = 2
     s._confirm(2)
     packet = Parser().parse_packet(s._socket.data)

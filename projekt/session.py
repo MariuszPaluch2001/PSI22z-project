@@ -47,7 +47,7 @@ class Session:
         self._current_packet_number = 1
         self._unconfirmed_packets = []
         self._parser = Parser()
-        self.open = False
+        self._open = False
         self.closing_procedure = False
 
     def stream_count(self) -> int:
@@ -64,11 +64,11 @@ class Session:
         raise StreamNotFound
 
     def _send_packet(self, packet: Packet) -> None:
-        if self.open:
+        if self._open:
             self._socket.send(packet.to_binary())
 
     def _send_control_packet(self, packet: SessionControlPacket) -> None:
-        if self.open:
+        if self._open:
             packet.packet_number = self._current_packet_number
             self._send_packet(packet)
             self._current_packet_number += 1
@@ -76,7 +76,7 @@ class Session:
 
     def _receive_packet(self, timeout: float = None) -> Packet:
         self._socket.settimeout(timeout)
-        if self.open:
+        if self._open:
             try:
                 data = self._socket.recvfrom(Session.BUFSIZE)
                 binary_data = data[0]
@@ -128,7 +128,7 @@ class Session:
             self._socket.close()
 
     def is_open(self):
-        return self.open
+        return self._open
 
     def is_closing(self):
         return self.closing_procedure
@@ -155,7 +155,7 @@ class ClientSession(Session):
             0,
             'o'
         )
-        self.open = True
+        self._open = True
         self.closing_procedure = False
         self._send_control_packet(opening_packet)
 
@@ -236,7 +236,7 @@ class ServerSession(Session):
             if isinstance(packet, SessionControlPacket) and packet.control_type == 'o':
                 self.session_id = packet.session_id
                 self._socket.connect(host_info)
-                self.open = True
+                self._open = True
                 self.closing_procedure = False
                 self._confirm(packet.packet_number)
                 self.host_address = host_info[0]
