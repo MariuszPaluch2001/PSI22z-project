@@ -46,7 +46,7 @@ def client_dispatch(session: ClientSession):
 
     # klient pracuje przez 200 sekund lub do zamknięcia
     def work():
-        return not session.is_closed and \
+        return not session.is_closing() and \
             (datetime.now() - time) < timedelta(seconds=CLIENT_WORK)
 
     while work():
@@ -82,7 +82,7 @@ def file_to_stream(stream: ServerStream, filename: str):
 
 def server_dispatch(session: ServerSession):
     def work():
-        return not session.is_closed
+        return not session.is_closing()
     while work():
         # serwer oczekuje na maks. 5 paczek z timeoutem=1s
         session.receive_packets(5, 1)
