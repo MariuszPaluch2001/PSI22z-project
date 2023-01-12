@@ -12,7 +12,8 @@ import random
 from typing import List
 from datetime import datetime
 import socket
-#sprawdzanie id sesji i korekcja
+import time
+
 class MaximalStreamCountReached(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
@@ -33,6 +34,7 @@ class Session:
     MAX_STREAM_NUMBER = 8
     RESEND_AFTER_TIME = 5
     BUFSIZE = 128
+    TIME_BETWEEN_PACKETS = 0.1
 
     def __init__(self) -> None:
         self.streams = []
@@ -85,6 +87,7 @@ class Session:
                     self._send_control_packet(packet)
                 else:
                     self._send_packet(packet)
+                time.sleep(Session.TIME_BETWEEN_PACKETS)
 
     def resend_packets(self) -> None:
         unconfirmed = self._unconfirmed_packets
@@ -95,6 +98,7 @@ class Session:
             if (datetime.now() - sent).total_seconds() >= Session.RESEND_AFTER_TIME:
                 self._send_control_packet(packet)
                 packet_sent_pair[1] = datetime.now()
+                time.sleep(Session.TIME_BETWEEN_PACKETS)
                       
 
     def close_stream(self,stream_id: int) -> Stream:
@@ -117,6 +121,8 @@ class Session:
     def __del__(self):
         if self._socket is not None:
             self._socket.close() 
+
+
 class ClientSession(Session):
     def __init__(self) -> None:
         super().__init__()
@@ -128,9 +134,10 @@ class ClientSession(Session):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.bind((my_address, my_port))
 
-    def connect(self, host_address: str, host_port: int) -> None:
+    def connect(self, host_address: str, host_port: int, timeout: float=None) -> None:
         self.host_address = host_address
         self.host_port = host_port
+        self._socket.settimeout(timeout)
         self._socket.connect((host_address, host_port))
         opening_packet = SessionControlPacket(
             self.session_id,
@@ -161,6 +168,8 @@ class ClientSession(Session):
         packet = self._receive_packet(timeout)
         if not packet:
             return 
+        if packet.session_id != self.session_id:
+            raise InvalidSessionID
         if isinstance(packet, DataPacket):
             print(f"!!!!!!!!!!!!Putting packet number = {packet.packet_number}")
             stream = self.get_stream(packet.stream_id)
@@ -208,9 +217,10 @@ class ServerSession(Session):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.bind((my_address, my_port))
 
-    def wait_for_connection(self) -> None:
+    def wait_for_connection(self, timeout:float = None) -> None:
         correct = False
         while not correct:
+            self._socket.settimeout(timeout)
             data = self._socket.recvfrom(Session.BUFSIZE)
             host_info = data[1]
             packet = self._parser.parse_packet(data[0])
@@ -229,6 +239,8 @@ class ServerSession(Session):
         packet = self._receive_packet(timeout)
         if not packet:
             return
+        if packet.session_id != self.session_id:
+            raise InvalidSessionID
         if isinstance(packet, SessionControlPacket):
             if packet.control_type == 'c':
                 self.close()

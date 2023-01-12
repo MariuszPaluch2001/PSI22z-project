@@ -263,6 +263,7 @@ def test_connection():
     s.close()
     assert check
 
+
 def test_open_new_stream():
     class DummySocket:
         def __init__(self): self.data = []
@@ -295,6 +296,7 @@ def test_client_receive_data_packet():
     s.is_open = True
     stream = ClientStream(1,1)
     s.streams.append(stream)
+    s.session_id = 1
     s.receive_packet()
     ret = stream._recv()
     assert isinstance(ret, DataPacket)
@@ -310,6 +312,7 @@ def test_client_receive_confirmation_packet():
     s._socket = DummySocket()
     s.is_open = True
     s._unconfirmed_packets.append([Packet(1,1), datetime.now()])
+    s.session_id = 1
     s.receive_packet()
     assert len(s._unconfirmed_packets) == 0
 
@@ -322,6 +325,7 @@ def test_client_receive_invalid_packet():
     s = ClientSession()
     s._socket = DummySocket()
     s.is_open = True
+    s.session_id = 1
     with pytest.raises(InvalidPacket):
         s.receive_packet()
 
@@ -340,7 +344,7 @@ def test_client_receive_multiple_packets():
     s.is_open = True
     s._unconfirmed_packets.append([Packet(1,1), datetime.now()])
     s._unconfirmed_packets.append([Packet(1,2), datetime.now()])
-
+    s.session_id = 1
     s.receive_packets(2)
     assert len(s._unconfirmed_packets) == 0
 
@@ -432,7 +436,6 @@ def test_wait_for_connection():
     assert s.my_address == '127.0.0.1'
     assert s.my_port == SERVER_PORT
     thread.start()
-
     s.wait_for_connection()
     thread.join()
     assert s.is_open
@@ -444,6 +447,12 @@ def test_wait_for_connection():
     assert confirm.packet_number == 1
     s.close()
 
+def test_wait_for_connection_timeout():
+    s = ServerSession()
+    s.open_socket("127.0.0.1", 9000)
+    with pytest.raises(TimeoutError):
+        s.wait_for_connection(1)
+        
 def test_server_receive_session_closing_packet():
     packet = SessionControlPacket(1,1,'c')
     class DummySocket:

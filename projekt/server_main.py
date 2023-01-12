@@ -22,8 +22,10 @@ def stream_to_file(stream: ClientStream, filename: str, working_time: int):
         if packet := stream.get_message(1):
             #pisanie do pliku znakowanego i do pliku tekstowego
             f_text.write(packet.data)
+            f_text.flush()
             f_stamped.write(str(packet.timestamp).encode('ascii'))
             f_stamped.write(packet.data)
+            f_stamped.flush()
     print(f'Strumień klienta z id: {stream.stream_id} kończy działanie')
     f_text.close()
     f_stamped.close()
@@ -89,7 +91,7 @@ def client_main():
     time.sleep(1)
     client = ClientSession()
     print('Sesja klienta rozpoczęta - próba połączenia z serwerem')
-    client.open_new_stream(CLIENT_ADDR, CLIENT_PORT)
+    client.open_socket(CLIENT_ADDR, CLIENT_PORT)
     client.connect(SERVER_ADDR, SERVER_PORT)
     print('Klientowi udało się połączyć z serwerem')
     #tworzymy wątki dla strumieni klienta - z różnym czasem życia
