@@ -9,9 +9,9 @@ import threading
 import time
 import random
 
-CLIENT_ADDR = '127.0.0.1'
+CLIENT_ADDR = '10.1.10.132'
 CLIENT_PORT = 8004
-SERVER_ADDR = '127.0.0.1'
+SERVER_ADDR = '10.1.0.205'
 SERVER_PORT = 8005
 CLIENT_WORK = 120
 
@@ -133,14 +133,14 @@ def server_main():
 
 
 def main():
-    server_thread = threading.Thread(target=server_main)
+    # server_thread = threading.Thread(target=server_main)
     client_thread = threading.Thread(target=client_main)
 
     client_thread.start()
-    server_thread.start()
+    # server_thread.start()
 
     client_thread.join()
-    server_thread.join()
+    # server_thread.join()
 
 
 if __name__ == "__main__":

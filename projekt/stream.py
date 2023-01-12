@@ -10,23 +10,6 @@ from threading import Condition, Lock
 from packets import *
 from typing import List
 
-
-class Logger:
-    def __init__(self) -> None:
-        pass
-
-    def write_packet_log(self, func_name: str, packet: Packet):
-        if isinstance(packet, RetransmissionRequestPacket):
-            print(f'{func_name}: stream_id={packet.stream_id} session_id={packet.session_id} '
-                  f'number={packet.packet_number} retr={packet.requested_packet_number} type=RetransmissionRequestPacket')
-        else:
-            print(f'{func_name}: stream_id={packet.stream_id} session_id={packet.session_id} '
-                  f'number={packet.packet_number} type=DataPacket')
-
-    def write_log(self, func_name: str, message: str):
-        print(f"!!!{func_name}: {message}")
-
-
 class Stream:
     def __init__(self, session_id, stream_id, logger=None) -> None:
         self.stream_id = stream_id
@@ -79,7 +62,7 @@ class Stream:
             self.mutex_out.acquire()
             try:
                 if self.logger is not None:
-                    self.logger.write_packet_log("send", packet)
+                    self.logger.write_packet_info("send", packet)
                 self.message_buffer_out.append(packet)
             finally:
                 self.mutex_out.release()
@@ -92,7 +75,7 @@ class Stream:
         try:
             message = self.message_buffer_out.pop(0)
             if self.logger is not None:
-                self.logger.write_packet_log("get_packet", message)
+                self.logger.write_packet_info("get_packet", message)
         finally:
             self.mutex_out.release()
 
@@ -107,7 +90,7 @@ class Stream:
                 packet = self.message_buffer_in.get(
                     block=True, timeout=timeout)[1]
                 if self.logger is not None:
-                    self.logger.write_packet_log("_recv", packet)
+                    self.logger.write_packet_info("_recv", packet)
                 return packet
             except Empty:
                 pass
@@ -120,7 +103,7 @@ class Stream:
         """
         with self.condition:
             if self.logger is not None:
-                self.logger.write_packet_log("post", packet)
+                self.logger.write_packet_info("post", packet)
             if self.upload_packet(packet):
                 self.condition.notify()
 
@@ -131,7 +114,7 @@ class ClientStream(Stream):
 
     def _upload_packet(self, packet: DataPacket):
         if self.logger is not None:
-            self.logger.write_packet_log("client_upload_packet", packet)
+            self.logger.write_packet_info("client_upload_packet", packet)
 
         # sprawdzanie czy już nie przetworzyliśmy tego komunikatu
         if self.data_packet_number <= packet.packet_number:
@@ -238,7 +221,7 @@ class ServerStream(Stream):
             wrzucany do kolejki.
         """
         if self.logger is not None:
-            self.logger.write_packet_log("server_upload_packet", packet)
+            self.logger.write_packet_info("server_upload_packet", packet)
 
         self.message_buffer_in.put(
             (packet.packet_number, packet))
@@ -282,7 +265,7 @@ class ServerStream(Stream):
                 packet
             )
 
-            if self.data_packet_number_to_send % 2 == 1:  # ACHTUNG! tylko do testów. Potem wywalić
-                self.send(packet)
-
+            # if self.data_packet_number_to_send % 2 == 1:  # ACHTUNG! tylko do testów. Potem wywalić
+                # self.send(packet)
+            self.send(packet)
             self.data_packet_number_to_send += 1

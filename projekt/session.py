@@ -44,7 +44,7 @@ class Session:
     BUFSIZE = 128
     TIME_BETWEEN_PACKETS = 0.1
 
-    def __init__(self) -> None:
+    def __init__(self, logger = None) -> None:
         self.streams = []
         self._socket = None
         self._current_packet_number = 1
@@ -52,6 +52,7 @@ class Session:
         self._parser = Parser()
         self._open = False
         self.closing_procedure = False
+        self.logger = logger
 
     def stream_count(self) -> int:
         '''
@@ -186,8 +187,8 @@ class Session:
         raise NotImplementedError
 
 class ClientSession(Session):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, logger = None) -> None:
+        super().__init__(logger)
 
     def open_socket(self, my_address: str, my_port: int, session_id: int = random.randint(0, 32767)):
         '''
@@ -252,8 +253,8 @@ class ClientSession(Session):
         if packet.session_id != self.session_id:
             raise InvalidSessionID
         if isinstance(packet, DataPacket):
-            print(
-                f"!!!!!!!!!!!!Putting packet number = {packet.packet_number}")
+            if self.logger is not None:
+                self.logger.write_log("receive_packet", f"putting packet number = {packet.packet_number}")
             stream = self.get_stream(packet.stream_id)
             stream.post(packet)
         elif isinstance(packet, ConfirmationPacket):
@@ -291,8 +292,8 @@ class ClientSession(Session):
 
 
 class ServerSession(Session):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, logger = None) -> None:
+        super().__init__(logger)
 
     def _confirm(self, packet_number: int) -> None:
         '''
