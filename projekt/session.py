@@ -39,7 +39,7 @@ class Session:
     MAX_STREAM_NUMBER = 8
     RESEND_AFTER_TIME = 5
     BUFSIZE = 128
-    TIME_BETWEEN_PACKETS = 0.1
+    TIME_BETWEEN_PACKETS = 1
 
     def __init__(self) -> None:
         self.streams = []

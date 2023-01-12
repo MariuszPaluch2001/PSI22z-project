@@ -166,7 +166,8 @@ class ClientStream(Stream):
             with self.condition:
                 self.condition.wait()
                 message = self._recv(timeout)
-
+                if message is None:
+                    return
         self.data_packet_number += 1
         return message
 
@@ -194,6 +195,8 @@ class ClientStream(Stream):
         return messages
 
     def _close(self, super_operation, closing_type) -> None:
+        with self.condition:
+            self.condition.notify()
 
         closing_packet = StreamControlPacket(
             self.session_id,
