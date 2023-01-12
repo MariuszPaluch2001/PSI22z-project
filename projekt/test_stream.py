@@ -3,7 +3,7 @@ import time
 
 from stream import Stream, ClientStream, ServerStream
 from packets import DataPacket, RetransmissionRequestPacket
-
+import pytest
 
 def test_put_packet_out_simple():
     test_stream = Stream(1, 1)
@@ -19,6 +19,10 @@ def test_get_packet_in_simple():
     test_stream.message_buffer_in.put((data_packet.packet_number, data_packet))
     assert test_stream._recv() == data_packet
 
+def test_upload_packet_not_impl_err():
+    s = Stream(1,1)
+    with pytest.raises(NotImplementedError):
+        s._upload_packet(DataPacket(1,1,1,bytearray(b'')))
 
 def test_put_packet_in_simple():
     test_stream = ClientStream(1, 1)
@@ -57,6 +61,9 @@ def test_mutex_out_sync():
     thread.start()
     assert test_stream.get_packet() == data_packet_1
 
+def test_get_message_return_none():
+    test_stream = ClientStream(1,1)
+    assert test_stream.get_message(1) is None
 
 def test_simple_get_messages():
     test_stream = ClientStream(1, 1)
