@@ -3,10 +3,10 @@
 -- copy to /wireshark/plugins/strumyk_dissector.lua
 local strumyk_protocol = Proto("STRumyk", "STRumyk Protocol")
 
-packet_type = ProtoField.int16("strumyk.packet_type", "PacketType", base.DEC)
+packet_type = ProtoField.int32("strumyk.packet_type", "PacketType", base.DEC)
 session_id = ProtoField.int32("strumyk.session_id", "SessionId", base.DEC)
 packet_number = ProtoField.int32("strumyk.packet_number", "PacketNumber", base.DEC)
-control_type = ProtoField.int32("strumyk.control_type", "ControlType", base.DEC)
+control_type = ProtoField.char("strumyk.control_type", "ControlType", base.HEX)
 stream_id = ProtoField.int32("strumyk.stream_id", "StreamId", base.DEC)
 timestamp = ProtoField.int32("strumyk.timestamp", "Timestamp", base.DEC)
 data = ProtoField.string("strumyk.data", "Data", base.NONE)
@@ -24,7 +24,7 @@ function strumyk_protocol.dissector(buffer, pinfo, tree)
   local subtree = tree:add(strumyk_protocol, buffer(), "STRumyk Protocol Data")
 
   -- getting packet type value
-  local packet_type_val = buffer(0, 2):le_uint()
+  local packet_type_val = buffer(0, 4):le_uint()
 
   -- fields in every packet types but ErrorPacket
   subtree:add_le(packet_type, buffer(0, 4))
@@ -35,12 +35,12 @@ function strumyk_protocol.dissector(buffer, pinfo, tree)
 
   -- SessionControlPacket
   if packet_type_val == 1 then
-    subtree:add_le(control_type, buffer(12, 4))
+    subtree:add_le(control_type, buffer(12, 1))
   end
   -- StreamControlPacket
   if packet_type_val == 2 then
-    subtree:add_le(control_type, buffer(12, 4))
-    subtree:add_le(stream_id, buffer(16, 4))
+    subtree:add_le(control_type, buffer(12, 1))
+    subtree:add_le(stream_id, buffer(13, 4))
   end
   -- RetransmissionRequestPacket
   if packet_type_val == 3 then
@@ -64,3 +64,4 @@ end
 local udp_port = DissectorTable.get("udp.port")
 udp_port:add(8004, strumyk_protocol)
 udp_port:add(8005, strumyk_protocol)
+
